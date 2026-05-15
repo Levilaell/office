@@ -2,19 +2,52 @@
 
 Plataforma multi-tenant de agentes de IA para escritórios contábeis brasileiros.
 
-## Setup
+## Rodar localmente
 
-Requisitos: Node 20+, pnpm 10+, Docker (Supabase local).
+### Pré-requisitos
+
+- Node 20+, pnpm 10+
+- Docker (Desktop, OrbStack ou compatível) — usado por Supabase e Redis
+- Supabase CLI (já em `devDependencies` do workspace)
+
+### Dependências de infra
+
+```bash
+# Supabase local (Postgres + Studio + Kong em http://localhost:54323)
+pnpm db:start
+
+# Redis (BullMQ — necessário a partir da Sprint 0.3b)
+docker compose up -d redis
+
+# Conferir saúde
+docker compose ps
+```
+
+Pra parar:
+
+```bash
+pnpm db:stop
+docker compose down            # mantém dados do Redis no volume
+docker compose down -v         # apaga volumes (Redis zera)
+```
+
+### Variáveis de ambiente
+
+- `.env.example` na raiz — variáveis comuns aos apps (ex: `REDIS_URL`)
+- `apps/web/.env.local.example` — Clerk + Supabase
+- `apps/agent-runtime/.env.example` — Anthropic + Langfuse (a partir da Sprint 0.3a)
 
 ```bash
 pnpm install
-pnpm db:start                 # sobe Supabase local (Postgres, Studio, Kong)
 cp apps/web/.env.local.example apps/web/.env.local
 # preencher CLERK_* e SUPABASE_* (URL + keys vêm do `db:start`)
-pnpm dev                      # sobe os três apps em paralelo
 ```
 
-`pnpm dev` sobe:
+### Apps
+
+```bash
+pnpm dev                      # sobe os três apps em paralelo
+```
 
 - `apps/web` — Next.js (UI + API routes) — http://localhost:3000
 - `apps/agent-runtime` — serviço Node (Hono) — http://localhost:3001
