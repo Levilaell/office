@@ -55,3 +55,32 @@ export type InitialSnapshot = {
   tasks: TaskSnapshot[];
   approvals: ApprovalSnapshot[];
 };
+
+export type AgentRunSnapshot = {
+  id: string;
+  agentId: string;
+  taskId: string | null;
+  status: 'running' | 'completed' | 'failed' | 'timeout' | 'escalated';
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  turnsUsed: number;
+  tokensUsed: number;
+  costUsd: number;
+  errorMessage: string | null;
+  traceId: string;
+};
+
+export type AgentMetricsSnapshot = {
+  totalRuns: number;
+  completed: number;
+  failed: number;
+  timedOut: number;
+  successRate: number;
+  avgDurationMs: number | null;
+  totalTokens: number;
+  totalCostUsd: number;
+  avgCostUsd: number;
+};
+
+export type AgentMetricsWindow = '24h' | '7d' | '30d';
