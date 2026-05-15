@@ -11,14 +11,24 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase migration up --local",
+    "db:types": "supabase gen types typescript --local > packages/shared-db/src/database.types.ts",
+    "db:diff": "supabase db diff"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.18.1",
     "@typescript-eslint/parser": "^8.18.1",
     "eslint": "^8.57.1",
+    "pg": "^8.20.0",
+    "supabase": "^2.98.2",
     "turbo": "^2.3.3",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"
@@ -27,7 +37,12 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "msgpackr-extract",
+      "supabase",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
+    }
   }
 }

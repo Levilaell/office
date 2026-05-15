@@ -31,6 +31,10 @@
               {
                 "group": ["@office/shared-db", "@office/shared-db/*"],
                 "message": "Apps não podem importar @office/shared-db direto. Acesso a dados deve passar por @office/shared-domain ou pelo serviço de agentes."
+              },
+              {
+                "group": ["@supabase/supabase-js", "@supabase/supabase-js/*"],
+                "message": "Use shared-domain. Cliente Supabase só em shared-db, acesso via shared-domain (ADR-002)."
               }
             ]
           }

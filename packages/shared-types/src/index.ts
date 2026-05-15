@@ -12,3 +12,16 @@ export interface AuditContext {
   accountId?: AccountId;
   actor: { kind: 'user'; userId: UserId } | { kind: 'agent'; agentId: AgentId } | { kind: 'system' };
 }
+
+export const ROLES = [
+  'owner_tenant',
+  'manager',
+  'operator',
+  'end_client',
+  'ai_supervisor',
+] as const;
+
+export type Role = (typeof ROLES)[number];
+
+export const isRole = (value: unknown): value is Role =>
+  typeof value === 'string' && (ROLES as readonly string[]).includes(value);

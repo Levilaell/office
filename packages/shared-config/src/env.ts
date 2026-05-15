@@ -14,6 +14,33 @@ export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export const parseBaseEnv = (raw: NodeJS.ProcessEnv = process.env): BaseEnv =>
   baseEnvSchema.parse(raw);
 
+const supabaseEnvSchema = baseEnvSchema.extend({
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  CLERK_DOMAIN: z.string().min(1),
+  CLERK_WEBHOOK_SECRET: z.string().min(1),
+});
+
+export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
+
+export const parseSupabaseEnv = (raw: NodeJS.ProcessEnv = process.env): SupabaseEnv =>
+  supabaseEnvSchema.parse(raw);
+
+const webEnvSchema = supabaseEnvSchema.extend({
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+  CLERK_SECRET_KEY: z.string().min(1),
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().min(1).default('/sign-in'),
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().min(1).default('/sign-up'),
+  NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: z.string().min(1).default('/dashboard'),
+  NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: z.string().min(1).default('/onboarding'),
+});
+
+export type WebEnv = z.infer<typeof webEnvSchema>;
+
+export const parseWebEnv = (raw: NodeJS.ProcessEnv = process.env): WebEnv =>
+  webEnvSchema.parse(raw);
+
 const TIER_ENV_KEY: Record<AgentTier, keyof BaseEnv> = {
   triage: 'LLM_MODEL_TRIAGE',
   default: 'LLM_MODEL_DEFAULT',

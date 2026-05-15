@@ -15,6 +15,7 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@office/shared-db": "workspace:*",
     "@office/shared-types": "workspace:*"
   },
   "devDependencies": {

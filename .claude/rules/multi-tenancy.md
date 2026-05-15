@@ -4,7 +4,7 @@
 
 - Toda tabela de domínio carrega `tenant_id` (UUID, FK pra `tenants`)
 - RLS (Row-Level Security) habilitado em toda tabela de domínio
-- Política RLS padrão: `tenant_id = auth.jwt() -> 'org_id'` (Clerk Org)
+- Política RLS padrão: `tenant_id = auth.jwt() -> 'o' ->> 'id'` (Clerk Org)
 - Nunca confiar em filtro de tenant_id vindo do cliente; sempre vir do contexto auth
 
 ## Hierarquia
@@ -18,10 +18,27 @@ platform → tenants (escritórios) → accounts (empresas que o escritório ate
 
 ## Implementação Supabase
 
-- Cliente Supabase configurado com JWT do Clerk
-- JWT carrega `org_id` (= tenant_id) e `org_role`
-- Policies usam `auth.jwt() ->> 'org_id'` pra filtrar
-- Para queries de plataforma: usar service_role key (server-side apenas, nunca exposto)
+- Integração via Third-Party Auth Native (NÃO o JWT template legado, deprecated em abril/2025)
+- Supabase valida tokens Clerk via JWKS público; sem compartilhar JWT secret
+- Cliente Supabase configurado com `accessToken` async que retorna o token Clerk
+
+## Claims do JWT (Clerk session v2)
+
+- `auth.jwt() ->> 'sub'` — Clerk user ID
+- `auth.jwt() -> 'o' ->> 'id'` — Clerk organization ID (objeto aninhado)
+- `auth.jwt() -> 'o' ->> 'rol'` — role do user na org (`admin` ou `basic_member`)
+- O claim `org_id` plano NÃO existe na session v2; sempre usar o caminho aninhado
+
+## Helper SQL
+
+- `public.current_tenant_id()` (STABLE) resolve o tenant interno (UUID) a partir do clerk_org_id
+- Postgres reserva o schema `auth` — helpers ficam em `public`
+- Policies RLS usam `tenant_id = public.current_tenant_id()` direto, sem subquery inline
+
+## Para queries de plataforma
+
+- Service role bypass RLS, server-side apenas
+- NUNCA expor service_role key via NEXT_PUBLIC_*; CI deveria grepar isso
 
 ## Testes obrigatórios
 
