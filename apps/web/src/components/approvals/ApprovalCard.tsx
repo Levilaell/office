@@ -3,23 +3,30 @@
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { relativeFuture, relativeTime } from '@/lib/relative-time';
-import {
-  DEPT_LABELS,
-  PRIORITY_COLORS,
-  type MockApproval,
-} from './approvals-mock';
+import { getActionLabel } from '@/lib/action-labels';
+import { getDepartmentMeta } from '@/lib/department-meta';
+import { useAgent } from '@/lib/realtime-store';
+import type { ApprovalSnapshot } from '@/lib/realtime-types';
 
 type Props = {
-  approval: MockApproval;
+  approval: ApprovalSnapshot;
   selected: boolean;
   onSelect: (id: string) => void;
 };
 
 export function ApprovalCard({ approval, selected, onSelect }: Props) {
-  const dept = DEPT_LABELS[approval.agentDepartment];
-  const priority = PRIORITY_COLORS[approval.priority];
+  const agent = useAgent(approval.agentId);
+  const dept = getDepartmentMeta(agent?.department);
+  const actionLabel = getActionLabel(approval.actionType);
   const createdAt = relativeTime(approval.createdAt);
   const expiresIn = approval.expiresAt ? relativeFuture(approval.expiresAt) : null;
+  const description =
+    pickString(approval.proposal, 'description') ??
+    pickString(approval.context, 'description') ??
+    'Sem descrição.';
+  const accountName =
+    pickString(approval.context, 'account_name') ??
+    pickString(approval.context, 'cliente');
 
   return (
     <Card
@@ -50,7 +57,9 @@ export function ApprovalCard({ approval, selected, onSelect }: Props) {
 
         <div className="grid flex-1 gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-foreground">{approval.agentName}</span>
+            <span className="text-sm font-medium text-foreground">
+              {agent?.name ?? 'Agente desconhecido'}
+            </span>
             <span
               className={cn(
                 'inline-flex items-center rounded-md border border-transparent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
@@ -61,23 +70,15 @@ export function ApprovalCard({ approval, selected, onSelect }: Props) {
             </span>
           </div>
 
-          <div className="text-base font-semibold text-foreground">{approval.actionLabel}</div>
+          <div className="text-base font-semibold text-foreground">{actionLabel}</div>
 
-          {approval.accountName && (
-            <div className="text-xs text-muted-foreground">{approval.accountName}</div>
+          {accountName && (
+            <div className="text-xs text-muted-foreground">{accountName}</div>
           )}
 
-          <p className="line-clamp-2 text-sm text-muted-foreground">{approval.description}</p>
+          <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span
-              className={cn(
-                'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                priority.badge,
-              )}
-            >
-              {priority.label}
-            </span>
             <span>{createdAt}</span>
             {expiresIn && (
               <span
@@ -93,4 +94,9 @@ export function ApprovalCard({ approval, selected, onSelect }: Props) {
       </div>
     </Card>
   );
+}
+
+function pickString(obj: Record<string, unknown>, key: string): string | undefined {
+  const value = obj[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

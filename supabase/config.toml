@@ -356,7 +356,7 @@ enabled = false
 # Ative depois de colocar CLERK_DOMAIN no .env.local — o Supabase valida o
 # domínio com o Clerk no startup. Mantemos desligado por default pra que
 # `pnpm db:start` funcione offline e em CI.
-enabled = false
+enabled = true
 # Obtain from https://clerk.com/setup/supabase
 domain = "env(CLERK_DOMAIN)"
 
