@@ -16,6 +16,8 @@
   "dependencies": {
     "@clerk/backend": "^3.4.8",
     "@hono/node-server": "^1.13.7",
+    "@langchain/core": "^1.1.0",
+    "@langchain/langgraph": "^1.3.0",
     "@office/shared-config": "workspace:*",
     "@office/shared-domain": "workspace:*",
     "@office/shared-events": "workspace:*",
@@ -23,7 +25,8 @@
     "@office/shared-prompts": "workspace:*",
     "@office/shared-types": "workspace:*",
     "hono": "^4.6.14",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

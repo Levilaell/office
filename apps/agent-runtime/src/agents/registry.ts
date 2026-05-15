@@ -1,0 +1,24 @@
+import { runRouter, type RouterInput, type RouterOutput } from './router/index.js';
+import type { AgentHandler } from './types.js';
+
+/**
+ * Registry de agentes disponíveis pra execução. A chave bate com
+ * `agents.agent_key` no DB e com o `agentKey` que viaja no payload do job
+ * BullMQ — é assim que o worker resolve qual handler invocar.
+ *
+ * Cresce conforme novos agentes entram. Sprint 0.3c só tem o roteador.
+ */
+export const AGENT_HANDLERS: Record<string, AgentHandler> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers têm tipos específicos; o registry é poliglota por design.
+  router: runRouter as AgentHandler<any, any>,
+};
+
+export const getAgentHandler = (agentKey: string): AgentHandler => {
+  const handler = AGENT_HANDLERS[agentKey];
+  if (!handler) {
+    throw new Error(`agent handler desconhecido: agentKey=${agentKey}`);
+  }
+  return handler;
+};
+
+export type { RouterInput, RouterOutput };

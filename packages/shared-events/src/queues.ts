@@ -1,6 +1,6 @@
 import { Queue, Worker, type JobsOptions, type WorkerOptions } from 'bullmq';
-import { AgentTaskJobPayload } from './schemas.js';
-import { getRedis } from './redis.js';
+import { AgentTaskJobPayload } from './schemas';
+import { getRedis } from './redis';
 
 const AGENT_TASKS_QUEUE = 'agent-tasks';
 

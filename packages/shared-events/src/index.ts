@@ -1,7 +1,7 @@
 export {
   getRedis,
   closeAllRedis,
-} from './redis.js';
+} from './redis';
 
 export {
   EVENT_TYPES,
@@ -9,6 +9,7 @@ export {
   EventEnvelope,
   TaskCreatedPayload,
   TaskAssignedPayload,
+  TaskStatusChangedPayload,
   TaskCompletedPayload,
   TaskFailedPayload,
   SubtaskCompletedPayload,
@@ -20,14 +21,14 @@ export {
   isEventType,
   type EventType,
   type JobQueue,
-} from './schemas.js';
+} from './schemas';
 
 export {
   publishEvent,
   subscribeEvents,
   type EventHandler,
   type Subscription,
-} from './pubsub.js';
+} from './pubsub';
 
 export {
   enqueueAgentTask,
@@ -35,4 +36,4 @@ export {
   closeAgentTasksQueue,
   type EnqueueOptions,
   type CreateWorkerOptions,
-} from './queues.js';
+} from './queues';

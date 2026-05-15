@@ -1,5 +1,5 @@
-import { EventEnvelope, isEventType, type EventType } from './schemas.js';
-import { getRedis } from './redis.js';
+import { EventEnvelope, isEventType, type EventType } from './schemas';
+import { getRedis } from './redis';
 
 export type EventHandler = (
   channel: string,

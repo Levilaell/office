@@ -58,6 +58,40 @@ pnpm dev                      # sobe os três apps em paralelo
 - `apps/agent-runtime` — serviço Node (Hono + Socket.io + workers BullMQ) — http://localhost:3001 (http + ws no `/socket.io`)
 - `apps/workers` — placeholder reservado para notificações outbound (sem código real ainda; workers de agente vivem em `apps/agent-runtime`)
 
+### Testar fluxo de triagem (Sprint 0.3c)
+
+Pipeline completo: API web → BullMQ → agent-runtime → Claude → audit/Langfuse.
+
+```bash
+# 1. subir infra
+docker compose up -d redis
+pnpm db:start
+
+# 2. subir apps (em outro terminal)
+pnpm dev
+
+# 3. seedar roteador em tenants existentes (idempotente)
+pnpm seed:agents
+
+# 4. validação rápida via teste de integração (precisa de ANTHROPIC_API_KEY + LANGFUSE_*)
+pnpm test:integration
+```
+
+Disparar `POST /api/triagem` via browser autenticado:
+
+```bash
+# Recupera session cookie do browser logado, depois:
+curl -X POST http://localhost:3000/api/triagem \
+  -H 'cookie: <session do browser>' \
+  -H 'content-type: application/json' \
+  -d '{"text":"Recebi um boleto de ICMS pra pagar, qual o vencimento?"}'
+# → 202 { "taskId": "...", "traceId": "..." }
+
+# Acompanhar status:
+curl http://localhost:3000/api/tasks/<taskId> -H 'cookie: <session>'
+# → { "status": "completed", "result": { "department": "fiscal", ... } }
+```
+
 ## Estrutura
 
 ```

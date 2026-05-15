@@ -142,7 +142,9 @@ describe('event bus — pub/sub', () => {
 // -----------------------------------------------------------------------------
 describe('event bus — BullMQ', () => {
   it('enqueue + worker processa o job com payload validado', async () => {
-    let received: { taskId: string; tenantId: string; traceId: string } | null = null;
+    let received:
+      | { taskId: string; tenantId: string; traceId: string; agentKey: string }
+      | null = null;
 
     const worker = createAgentTasksWorker(async (payload) => {
       received = payload;
@@ -154,6 +156,7 @@ describe('event bus — BullMQ', () => {
       taskId,
       tenantId: TENANT_A_ID,
       traceId: 'trace-bull-1',
+      agentKey: 'router',
     });
     expect(jobId).toBeTruthy();
 
@@ -167,6 +170,7 @@ describe('event bus — BullMQ', () => {
       taskId,
       tenantId: TENANT_A_ID,
       traceId: 'trace-bull-1',
+      agentKey: 'router',
     });
   });
 });

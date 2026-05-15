@@ -11,6 +11,7 @@ import { z } from 'zod';
 export const EVENT_TYPES = [
   'task.created.global',
   'task.assigned',
+  'task.status_changed',
   'task.completed',
   'task.failed',
   'subtask.completed',
@@ -45,10 +46,20 @@ export const TaskAssignedPayload = z.object({
 });
 export type TaskAssignedPayload = z.infer<typeof TaskAssignedPayload>;
 
+export const TaskStatusChangedPayload = z.object({
+  taskId: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  traceId: z.string().min(1),
+  previousStatus: z.string().min(1),
+  status: z.string().min(1),
+});
+export type TaskStatusChangedPayload = z.infer<typeof TaskStatusChangedPayload>;
+
 export const TaskCompletedPayload = z.object({
   taskId: z.string().uuid(),
   tenantId: z.string().uuid(),
   traceId: z.string().min(1),
+  department: z.string().min(1).optional(),
   result: z.unknown().optional(),
 });
 export type TaskCompletedPayload = z.infer<typeof TaskCompletedPayload>;
@@ -57,6 +68,7 @@ export const TaskFailedPayload = z.object({
   taskId: z.string().uuid(),
   tenantId: z.string().uuid(),
   traceId: z.string().min(1),
+  department: z.string().min(1).optional(),
   error: z.string().min(1),
 });
 export type TaskFailedPayload = z.infer<typeof TaskFailedPayload>;
@@ -131,5 +143,6 @@ export const AgentTaskJobPayload = z.object({
   taskId: z.string().uuid(),
   tenantId: z.string().uuid(),
   traceId: z.string().min(1),
+  agentKey: z.string().min(1),
 });
 export type AgentTaskJobPayload = z.infer<typeof AgentTaskJobPayload>;

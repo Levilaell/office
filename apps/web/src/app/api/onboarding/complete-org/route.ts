@@ -6,6 +6,7 @@ import {
   getTenantByClerkOrgId,
   getUserByClerkUserId,
   linkUserToTenant,
+  seedDefaultAgentsForTenant,
 } from '@office/shared-domain';
 import { getServiceRoleSupabase } from '@/lib/supabase';
 
@@ -29,6 +30,7 @@ export async function POST() {
       name: org.name,
     });
   }
+  await seedDefaultAgentsForTenant(supabase, tenant.id);
 
   let user = await getUserByClerkUserId(supabase, userId);
   if (!user) {

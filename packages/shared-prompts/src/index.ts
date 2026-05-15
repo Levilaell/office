@@ -22,3 +22,5 @@ export const examplePrompt: PromptDefinition = {
       'Responda apenas: "ok".',
     ].join('\n'),
 };
+
+export { routerPrompt } from './router.js';

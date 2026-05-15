@@ -6,6 +6,7 @@ import {
   getTenantByClerkOrgId,
   getUserByClerkUserId,
   linkUserToTenant,
+  seedDefaultAgentsForTenant,
   unlinkUserFromTenant,
   updateTenantByClerkOrgId,
   updateUserByClerkUserId,
@@ -102,10 +103,11 @@ export async function POST(req: NextRequest) {
       case 'organization.created':
       case 'organization.updated': {
         const data = (evt as ClerkOrgEvent).data;
-        await createTenant(supabase, {
+        const tenant = await createTenant(supabase, {
           clerkOrgId: data.id,
           name: data.name ?? 'Escritório',
         });
+        await seedDefaultAgentsForTenant(supabase, tenant.id);
         break;
       }
       case 'organization.deleted': {

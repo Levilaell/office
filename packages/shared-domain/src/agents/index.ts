@@ -118,3 +118,20 @@ export const getRouterForTenant = async (
   if (error) throw error;
   return data;
 };
+
+export const getAgentByKey = async (
+  supabase: AnyClient,
+  tenantId: string,
+  agentKey: string,
+): Promise<Agent | null> => {
+  const { data, error } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('agent_key', agentKey)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+export { seedDefaultAgentsForTenant } from './seed';

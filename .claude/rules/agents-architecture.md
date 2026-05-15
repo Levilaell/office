@@ -59,3 +59,13 @@ Por tier de autonomia configurado pelo tenant:
 - Autônomo: agente executa tudo no escopo
 
 Ações de impacto regulatório SEMPRE passam por aprovação, independente do tier.
+
+## Agente Roteador
+
+- Único agente sempre presente em todo tenant. Camada 1 do modelo de orquestração: nenhuma decisão de departamento sai sem passar por ele.
+- `agent_key='router'`, `role='router'`, `department='platform'`, `tier='triage'` (Haiku 4.5 — econômico e suficiente pra classificação).
+- `autonomy_tier='autonomo'` propositalmente: classificar mensagem em departamento é decisão interna do sistema, não uma ação externa que possa causar impacto regulatório.
+- Seedado automaticamente em duas portas: webhook `organization.created` e API síncrona `/api/onboarding/complete-org`. Idempotente via upsert `(tenant_id, agent_key)`; reentregas não duplicam.
+- Recebe mensagens externas (POST `/api/triagem`) e classifica em um dos 6 departamentos (`atendimento`, `societario`, `pessoal`, `contabil`, `fiscal`, `financeiro_interno`). Saída é estritamente JSON validado por Zod; falha de schema marca o run como `failed`.
+- Quando o segundo agente entrar (coordenador de departamento), o roteador despacha via evento — publica `task.assigned` no canal `tenant:{id}` com `department` no payload, e o coordenador subscreve. Roteador NÃO chama coordenador diretamente.
+- Script de retroatividade: `pnpm seed:agents` cria roteador em tenants que existiam antes da feature.
