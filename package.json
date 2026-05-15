@@ -14,7 +14,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules",
-    "db:start": "supabase start",
+    "db:start": "dotenvx run --env-file=.env.local -- supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:migrate": "supabase migration up --local",
@@ -23,6 +23,7 @@
     "seed:agents": "tsx scripts/seed-existing-tenants.ts"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.66.0",
     "@office/shared-domain": "workspace:*",
     "@office/shared-events": "workspace:*",
     "@office/shared-llm": "workspace:*",
