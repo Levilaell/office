@@ -14,12 +14,14 @@ Plataforma multi-tenant de agentes de IA pra escritórios contábeis brasileiros
 
 ## Stack (não desviar sem ADR)
 
-- Web: Next.js 14 App Router, TypeScript estrito, Tailwind, shadcn/ui, PixiJS, Socket.io, TanStack Query, Zustand
-- Agentes: serviço Node separado com LangGraph.js; BullMQ pra filas; Temporal só a partir da Fase 2
-- Dados: Supabase (Postgres + Storage + Realtime), pgvector, Redis
-- Auth: Clerk com Organizations (Clerk Org = Tenant)
-- LLM: Claude Sonnet 4 padrão | Opus 4.7 crítico | Haiku 4.5 triagem; OpenAI fallback; Langfuse pra tracing
-- Observabilidade: Langfuse + Sentry + Better Stack + PostHog
+Versões refletem o instalado em maio/2026 (Fase 0 fechada). Lock no `pnpm-lock.yaml`.
+
+- Web: Next.js 15.5 App Router, React 19, TypeScript estrito, Tailwind 3.4, shadcn/ui, PixiJS 8, Socket.io-client 4, Zustand 5
+- Agentes: serviço Node separado com LangGraph.js 1.3 + Hono 4; BullMQ 5 pra filas; Temporal só a partir da Fase 2
+- Dados: Supabase Cloud (Postgres + Storage + Realtime, ADR-012), pgvector, Redis nativo em dev (ADR-013)
+- Auth: Clerk v7 com Organizations (Clerk Org = Tenant, ADR-004); TPA nativo no Supabase (ADR-005)
+- LLM: @anthropic-ai/sdk 0.96 — Claude Sonnet 4 padrão | Opus 4.7 crítico | Haiku 4.5 triagem; OpenAI como fallback futuro
+- Observabilidade: Langfuse 5 (tracing LLM) já integrado; Sentry + Better Stack + PostHog planejados (Fase 1+)
 
 ## Hierarquia de dados
 
@@ -80,6 +82,16 @@ docs/adrs/              # ADRs
 
 Cada `apps/*` pode ter CLAUDE.md local com contexto específico que sobrescreve o raiz.
 
+## Estado atual (v0.1.0-fase-0)
+
+- Fase 0 (Fundações): CONCLUÍDA
+- Hello world: roteador Haiku 4.5 classificando triagens em produção
+- Custo médio por triagem: ~USD 0.0008
+- Tempo médio: 2-3s ponta a ponta
+- Cobertura: 47 testes unit + integration verdes
+- Departamentos: só `platform` tem agente real (Roteador). `atendimento`, `societario`, `pessoal`, `contabil`, `fiscal`, `financeiro_interno` têm salas no escritório 2D mas vazios.
+- Próximo: Sprint 0.3e (painel runs) e Fase 1 (Atendimento — primeiro coordenador + specialists)
+
 ## Comandos
 
 - `pnpm dev` — todos apps em paralelo
@@ -117,6 +129,8 @@ Dentro de padrão já estabelecido: executar sem perguntar.
 
 - `@docs/escopo-produto.md` — escopo completo
 - `@docs/adrs/` — decisões arquiteturais
+- `@docs/tech-debt.md` — dívidas técnicas conhecidas, priorizadas
+- `@docs/development.md` — setup e workflow de dev
 - `@.claude/rules/multi-tenancy.md` — RLS, hierarquia, isolamento
 - `@.claude/rules/agents-architecture.md` — runtime, handoffs, memória
 - `@.claude/rules/llm-cost.md` — budgets, cascade, cache

@@ -1,0 +1,155 @@
+/**
+ * Valida que `.env.local` de cada app (web, agent-runtime, workers) tem todas
+ * as chaves declaradas em `.env.example` na raiz. Sai com código 1 se faltar
+ * qualquer chave; 0 se tudo OK.
+ *
+ * Uso:
+ *   pnpm check-env
+ *
+ * Standalone — NÃO bloqueia `pnpm dev`. Dev experiente pode rodar parcial
+ * sem todas as envs. Veja `docs/development.md` pra orientação de quando rodar.
+ */
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const APPS = ['web', 'agent-runtime', 'workers'] as const;
+export type AppName = (typeof APPS)[number];
+
+export interface AppCheckResult {
+  app: AppName;
+  envLocalPresent: boolean;
+  missing: string[];
+}
+
+export interface CheckResult {
+  ok: boolean;
+  apps: AppCheckResult[];
+}
+
+/**
+ * Extrai chaves de um `.env.example`. Pega só linhas `^[A-Z_]+=` (top-level),
+ * ignora comentários, linhas em branco e referências como `${VAR}`.
+ */
+export function parseExampleKeys(content: string): string[] {
+  const keys: string[] = [];
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^([A-Z][A-Z0-9_]*)=/);
+    if (match && match[1]) keys.push(match[1]);
+  }
+  return Array.from(new Set(keys));
+}
+
+/**
+ * Faz parse de conteúdo `.env` em Map. Strip de quotes nos values.
+ * Comentários e linhas em branco são ignoradas.
+ */
+export function parseEnvFile(content: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    out.set(key, value);
+  }
+  return out;
+}
+
+interface CheckAppInput {
+  app: AppName;
+  envLocalContent: string | null;
+  exampleKeys: string[];
+}
+
+export function checkApp(input: CheckAppInput): AppCheckResult {
+  if (input.envLocalContent === null) {
+    return { app: input.app, envLocalPresent: false, missing: [...input.exampleKeys] };
+  }
+  const envs = parseEnvFile(input.envLocalContent);
+  const missing = input.exampleKeys.filter((k) => {
+    const v = envs.get(k);
+    return v === undefined || v === '';
+  });
+  return { app: input.app, envLocalPresent: true, missing };
+}
+
+export interface CheckInput {
+  exampleContent: string;
+  apps: { name: AppName; envLocalContent: string | null }[];
+}
+
+export function check(input: CheckInput): CheckResult {
+  const exampleKeys = parseExampleKeys(input.exampleContent);
+  const apps = input.apps.map((a) =>
+    checkApp({ app: a.name, envLocalContent: a.envLocalContent, exampleKeys })
+  );
+  return {
+    ok: apps.every((a) => a.envLocalPresent && a.missing.length === 0),
+    apps,
+  };
+}
+
+export function formatReport(result: CheckResult): string {
+  if (result.ok) return '✓ envs OK';
+  const lines: string[] = [];
+  for (const app of result.apps) {
+    if (!app.envLocalPresent) {
+      lines.push(`✗ apps/${app.app}/.env.local ausente`);
+      lines.push(`  faltam todas as ${app.missing.length} chaves:`);
+      for (const k of app.missing) lines.push(`  - ${k}`);
+      continue;
+    }
+    if (app.missing.length === 0) continue;
+    lines.push(`✗ apps/${app.app}/.env.local sem as chaves:`);
+    for (const k of app.missing) lines.push(`  - ${k}`);
+  }
+  return lines.join('\n');
+}
+
+function readOrNull(path: string): string | null {
+  return existsSync(path) ? readFileSync(path, 'utf-8') : null;
+}
+
+export interface RunFromDiskResult extends CheckResult {
+  exampleFound: boolean;
+}
+
+export function runFromDisk(rootDir: string): RunFromDiskResult {
+  const examplePath = resolve(rootDir, '.env.example');
+  if (!existsSync(examplePath)) {
+    return { ok: false, exampleFound: false, apps: [] };
+  }
+  const exampleContent = readFileSync(examplePath, 'utf-8');
+  const apps = APPS.map((name) => ({
+    name,
+    envLocalContent: readOrNull(resolve(rootDir, 'apps', name, '.env.local')),
+  }));
+  return { ...check({ exampleContent, apps }), exampleFound: true };
+}
+
+function main(): never {
+  const result = runFromDisk(process.cwd());
+  if (!result.exampleFound) {
+    console.error(`✗ .env.example não encontrado em ${process.cwd()}`);
+    process.exit(1);
+  }
+  if (result.ok) {
+    console.log(formatReport(result));
+    process.exit(0);
+  }
+  console.error(formatReport(result));
+  process.exit(1);
+}
+
+const isMain =
+  typeof process.argv[1] === 'string' && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();
