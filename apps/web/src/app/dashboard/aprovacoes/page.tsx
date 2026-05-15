@@ -1,33 +1,48 @@
 'use client';
 
-import { useState } from 'react';
 import { ApprovalsInbox } from '@/components/approvals/ApprovalsInbox';
-import { MOCK_APPROVALS, type MockApproval } from '@/components/approvals/approvals-mock';
+import { decideApproval } from '@/lib/approvals-api';
+import { usePendingApprovals } from '@/lib/realtime-store';
 
 export default function AprovacoesPage() {
-  const [approvals, setApprovals] = useState<MockApproval[]>(MOCK_APPROVALS);
+  const approvals = usePendingApprovals();
 
-  const remove = (id: string) => setApprovals((cur) => cur.filter((a) => a.id !== id));
+  const reportError = (action: string, err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[approvals] ${action} failed`, message);
+    // Toast lib não está instalada — alert nativo cobre o caminho de
+    // erro até a primeira sprint de UX polish.
+    if (typeof window !== 'undefined') {
+      window.alert(`Falha ao ${action}: ${message}`);
+    }
+  };
 
   return (
     <main className="container mx-auto max-w-5xl px-4 py-8">
       <ApprovalsInbox
         approvals={approvals}
         onApprove={(id, justification) => {
-          console.log('[approval] approve', { id, justification });
-          remove(id);
+          decideApproval(id, {
+            action: 'approve',
+            ...(justification && { justification }),
+          }).catch((err) => reportError('aprovar', err));
         }}
         onReject={(id, justification) => {
-          console.log('[approval] reject', { id, justification });
-          remove(id);
+          decideApproval(id, { action: 'reject', justification }).catch((err) =>
+            reportError('rejeitar', err),
+          );
         }}
         onModify={(id, modified, justification) => {
-          console.log('[approval] modify', { id, modified, justification });
-          remove(id);
+          decideApproval(id, {
+            action: 'modify',
+            modifiedProposal: modified,
+            ...(justification && { justification }),
+          }).catch((err) => reportError('modificar', err));
         }}
         onRequestMoreInfo={(id, question) => {
-          console.log('[approval] request_info', { id, question });
-          remove(id);
+          decideApproval(id, { action: 'request_info', question }).catch((err) =>
+            reportError('pedir mais info', err),
+          );
         }}
       />
     </main>

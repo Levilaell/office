@@ -2,10 +2,10 @@
 
 import { Card } from '@/components/ui/card';
 import { ApprovalCard } from './ApprovalCard';
-import type { MockApproval } from './approvals-mock';
+import type { ApprovalSnapshot } from '@/lib/realtime-types';
 
 type Props = {
-  approvals: MockApproval[];
+  approvals: ApprovalSnapshot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 };

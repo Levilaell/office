@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { MockApproval } from './approvals-mock';
+import { getActionLabel } from '@/lib/action-labels';
+import type { ApprovalSnapshot } from '@/lib/realtime-types';
 
 export type ApprovalAction = 'approve' | 'reject' | 'modify' | 'request_info';
 
@@ -71,7 +72,7 @@ const COPY: Record<ApprovalAction, Copy> = {
 
 type Props = {
   action: ApprovalAction | null;
-  approval: MockApproval | null;
+  approval: ApprovalSnapshot | null;
   onCancel: () => void;
   onApprove: (id: string, justification?: string) => void;
   onReject: (id: string, justification: string) => void;
@@ -119,6 +120,10 @@ export function ActionDialog({
 
   if (!action || !approval || !copy) return null;
 
+  const actionLabel = getActionLabel(approval.actionType);
+  const accountName = pickString(approval.context, 'account_name')
+    ?? pickString(approval.context, 'cliente');
+
   const handleConfirm = () => {
     if (confirmDisabled) return;
     const id = approval.id;
@@ -158,10 +163,8 @@ export function ActionDialog({
 
         <div className="grid gap-3">
           <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            <div className="font-medium text-foreground">{approval.actionLabel}</div>
-            {approval.accountName && (
-              <div className="mt-0.5">Cliente: {approval.accountName}</div>
-            )}
+            <div className="font-medium text-foreground">{actionLabel}</div>
+            {accountName && <div className="mt-0.5">Cliente: {accountName}</div>}
           </div>
 
           {action === 'modify' && (
@@ -212,4 +215,9 @@ export function ActionDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function pickString(obj: Record<string, unknown>, key: string): string | undefined {
+  const value = obj[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

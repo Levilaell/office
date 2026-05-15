@@ -11,15 +11,14 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { relativeFuture, relativeTime } from '@/lib/relative-time';
+import { getActionLabel } from '@/lib/action-labels';
+import { getDepartmentMeta } from '@/lib/department-meta';
+import { useAgent } from '@/lib/realtime-store';
+import type { ApprovalSnapshot } from '@/lib/realtime-types';
 import { ActionDialog, type ApprovalAction } from './ActionDialog';
-import {
-  DEPT_LABELS,
-  PRIORITY_COLORS,
-  type MockApproval,
-} from './approvals-mock';
 
 type Props = {
-  approval: MockApproval | null;
+  approval: ApprovalSnapshot | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApprove: (id: string, justification?: string) => void;
@@ -38,9 +37,14 @@ export function ApprovalSheet({
   onRequestMoreInfo,
 }: Props) {
   const [pendingAction, setPendingAction] = useState<ApprovalAction | null>(null);
-
-  const dept = approval ? DEPT_LABELS[approval.agentDepartment] : null;
-  const priority = approval ? PRIORITY_COLORS[approval.priority] : null;
+  const agent = useAgent(approval?.agentId ?? '');
+  const dept = approval ? getDepartmentMeta(agent?.department) : null;
+  const actionLabel = approval ? getActionLabel(approval.actionType) : '';
+  const description = approval
+    ? pickString(approval.proposal, 'description')
+      ?? pickString(approval.context, 'description')
+      ?? 'Sem descrição.'
+    : '';
 
   const closeAll = () => {
     setPendingAction(null);
@@ -75,7 +79,7 @@ export function ApprovalSheet({
           side="right"
           className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-xl"
         >
-          {approval && dept && priority && (
+          {approval && dept && (
             <>
               <SheetHeader className="border-b border-border bg-card/50 px-6 py-5">
                 <div className="flex items-center gap-3">
@@ -89,23 +93,17 @@ export function ApprovalSheet({
                     {dept.emoji}
                   </div>
                   <div className="grid gap-0.5 text-left">
-                    <SheetTitle className="text-lg">{approval.actionLabel}</SheetTitle>
+                    <SheetTitle className="text-lg">{actionLabel}</SheetTitle>
                     <SheetDescription className="text-xs">
-                      {approval.agentName} · {dept.label}
+                      {agent?.name ?? 'Agente desconhecido'} · {dept.label}
                     </SheetDescription>
                   </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                      priority.badge,
-                    )}
-                  >
-                    {priority.label}
+                  <span className="text-muted-foreground">
+                    criado {relativeTime(approval.createdAt)}
                   </span>
-                  <span className="text-muted-foreground">criado {relativeTime(approval.createdAt)}</span>
                   {approval.expiresAt && (
                     <span
                       className={cn(
@@ -125,7 +123,7 @@ export function ApprovalSheet({
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Descrição
                   </h3>
-                  <p className="text-sm text-foreground">{approval.description}</p>
+                  <p className="text-sm text-foreground">{description}</p>
                 </section>
 
                 <section className="grid gap-2">
@@ -188,4 +186,9 @@ function JsonBlock({ data }: { data: Record<string, unknown> }) {
       {JSON.stringify(data, null, 2)}
     </pre>
   );
+}
+
+function pickString(obj: Record<string, unknown>, key: string): string | undefined {
+  const value = obj[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

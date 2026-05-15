@@ -45,6 +45,19 @@ export const createApproval = async (
   return data;
 };
 
+export const getApprovalById = async (
+  supabase: AnyClient,
+  approvalId: string,
+): Promise<Approval | null> => {
+  const { data, error } = await supabase
+    .from('approvals')
+    .select('*')
+    .eq('id', approvalId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
 export type GetPendingApprovalsFilters = {
   agentId?: string;
   taskId?: string;
