@@ -112,7 +112,6 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
         tile
           .poly([...DIAMOND_VERTICES])
           .fill({ color: colors.floor })
-          .poly([...DIAMOND_VERTICES])
           .stroke({ color: 0x000000, width: 1, alpha: 0.15 });
         tile.position.set(s.x, s.y);
         roomContainer.addChild(tile);
