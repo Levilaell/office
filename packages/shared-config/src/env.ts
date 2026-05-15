@@ -41,6 +41,28 @@ export type WebEnv = z.infer<typeof webEnvSchema>;
 export const parseWebEnv = (raw: NodeJS.ProcessEnv = process.env): WebEnv =>
   webEnvSchema.parse(raw);
 
+const llmEnvSchema = baseEnvSchema.extend({
+  ANTHROPIC_API_KEY: z.string().min(1),
+  LANGFUSE_PUBLIC_KEY: z.string().min(1),
+  LANGFUSE_SECRET_KEY: z.string().min(1),
+  LANGFUSE_HOST: z.string().url().default('https://cloud.langfuse.com'),
+  LLM_DEFAULT_BUDGET_MAX_TOKENS: z.coerce.number().int().positive().default(4000),
+  LLM_DEFAULT_BUDGET_MAX_COST_USD: z.coerce.number().positive().default(0.1),
+});
+
+export type LlmEnv = z.infer<typeof llmEnvSchema>;
+
+export const parseLlmEnv = (raw: NodeJS.ProcessEnv = process.env): LlmEnv =>
+  llmEnvSchema.parse(raw);
+
+const agentRuntimeEnvSchema = llmEnvSchema;
+
+export type AgentRuntimeEnv = z.infer<typeof agentRuntimeEnvSchema>;
+
+export const parseAgentRuntimeEnv = (
+  raw: NodeJS.ProcessEnv = process.env,
+): AgentRuntimeEnv => agentRuntimeEnvSchema.parse(raw);
+
 const TIER_ENV_KEY: Record<AgentTier, keyof BaseEnv> = {
   triage: 'LLM_MODEL_TRIAGE',
   default: 'LLM_MODEL_DEFAULT',

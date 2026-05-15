@@ -1,5 +1,5 @@
 {
-  "name": "@office/shared-domain",
+  "name": "@office/shared-llm",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,9 +15,14 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
-    "@office/shared-db": "workspace:*",
-    "@office/shared-llm": "workspace:*",
-    "@office/shared-types": "workspace:*"
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@arizeai/openinference-instrumentation-anthropic": "^0.1.11",
+    "@langfuse/otel": "^5.3.0",
+    "@langfuse/tracing": "^5.3.0",
+    "@office/shared-config": "workspace:*",
+    "@office/shared-types": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.218.0"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

@@ -20,3 +20,4 @@ export {
 export * from './tenants/index';
 export * from './users/index';
 export * from './audit/index';
+export * from './llm/audit';

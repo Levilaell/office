@@ -17,6 +17,7 @@
     "@hono/node-server": "^1.13.7",
     "@office/shared-config": "workspace:*",
     "@office/shared-domain": "workspace:*",
+    "@office/shared-llm": "workspace:*",
     "@office/shared-prompts": "workspace:*",
     "@office/shared-types": "workspace:*",
     "hono": "^4.6.14"
