@@ -1,0 +1,41 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    ".next",
+    ".turbo",
+    "*.config.js",
+    "*.config.mjs",
+    "*.config.cjs",
+    "next-env.d.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["apps/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@office/shared-db", "@office/shared-db/*"],
+                "message": "Apps não podem importar @office/shared-db direto. Acesso a dados deve passar por @office/shared-domain ou pelo serviço de agentes."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

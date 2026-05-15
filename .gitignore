@@ -1,0 +1,39 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# builds
+dist
+.next
+.turbo
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+.DS_Store
+
+# tests / coverage
+coverage
+playwright-report
+test-results
+
+# misc
+.cache
+.eslintcache
+
+# private/local CLAUDE config (não vai pro repo público)
+CLAUDE.local.md
