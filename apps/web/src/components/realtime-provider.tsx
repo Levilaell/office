@@ -1,31 +1,145 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { useAuth } from '@clerk/nextjs';
-import { disconnectSocket, getSocket } from '@/lib/socket';
+import { isAgentState } from '@office/shared-types';
+import { useRealtimeStore } from '@/lib/realtime-store';
+import type {
+  ApprovalSnapshot,
+  InitialSnapshot,
+  TaskSnapshot,
+} from '@/lib/realtime-types';
 
-/**
- * Mantém a conexão Socket.io viva enquanto user + org estão ativos.
- * Não consome eventos — isso fica nos consumers (Sprint 0.3c+).
- */
-export const RealtimeProvider = ({ children }: { children: React.ReactNode }) => {
+type Props = {
+  initialSnapshot: InitialSnapshot;
+  children: React.ReactNode;
+};
+
+const RUNTIME_URL = process.env.NEXT_PUBLIC_AGENT_RUNTIME_URL;
+
+const refetchTasks = async (): Promise<TaskSnapshot[]> => {
+  const r = await fetch('/api/tasks/recent', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`tasks fetch failed: ${r.status}`);
+  const body = (await r.json()) as { tasks: TaskSnapshot[] };
+  return body.tasks;
+};
+
+const refetchApprovals = async (): Promise<ApprovalSnapshot[]> => {
+  const r = await fetch('/api/approvals?status=pending', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`approvals fetch failed: ${r.status}`);
+  const body = (await r.json()) as { approvals: ApprovalSnapshot[] };
+  return body.approvals;
+};
+
+export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const { isLoaded, isSignedIn, orgId, getToken } = useAuth();
+  const socketRef = useRef<Socket | null>(null);
+  const hydrate = useRealtimeStore((s) => s.hydrate);
+  const setSocketConnected = useRealtimeStore((s) => s.setSocketConnected);
+  const updateAgentState = useRealtimeStore((s) => s.updateAgentState);
+  const replaceTasks = useRealtimeStore((s) => s.replaceTasks);
+  const replaceApprovals = useRealtimeStore((s) => s.replaceApprovals);
+
+  // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
+  useEffect(() => {
+    hydrate(initialSnapshot);
+  }, [initialSnapshot, hydrate]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !orgId) {
-      disconnectSocket();
+      setSocketConnected(false);
       return;
     }
+    if (!RUNTIME_URL) {
+      console.error('[realtime] NEXT_PUBLIC_AGENT_RUNTIME_URL não definido');
+      return;
+    }
+
     let cancelled = false;
-    getSocket(() => getToken()).catch((err) => {
-      if (cancelled) return;
-      console.error('[realtime] handshake falhou', err);
+    let socket: Socket | null = null;
+
+    (async () => {
+      const token = await getToken();
+      if (!token || cancelled) return;
+
+      socket = io(RUNTIME_URL, {
+        auth: { token },
+        transports: ['websocket'],
+        autoConnect: true,
+        reconnection: true,
+      });
+
+      socket.on('connect', () => setSocketConnected(true));
+      socket.on('disconnect', () => setSocketConnected(false));
+      socket.on('connect_error', (err) => {
+        console.error('[realtime] connect_error', err.message);
+      });
+
+      // Deltas — payload carrega só IDs + transição. Estratégia:
+      // - agent.state_changed: aplica direto (payload tem state + metadata)
+      // - task.*: refetch da lista recente
+      // - approval.*: refetch dos pending
+      // Otimizar pra mergear delta vira issue de performance futura.
+      socket.on('agent.state_changed', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as {
+          agentId?: unknown;
+          state?: unknown;
+          metadata?: unknown;
+        };
+        if (typeof p.agentId !== 'string' || !isAgentState(p.state)) return;
+        const metadata =
+          p.metadata && typeof p.metadata === 'object' && !Array.isArray(p.metadata)
+            ? (p.metadata as Record<string, unknown>)
+            : undefined;
+        updateAgentState(p.agentId, p.state, metadata);
+      });
+
+      const onTaskEvent = () => {
+        refetchTasks()
+          .then(replaceTasks)
+          .catch((err) => console.error('[realtime] refetch tasks', err));
+      };
+      socket.on('task.status_changed', onTaskEvent);
+      socket.on('task.assigned', onTaskEvent);
+      socket.on('task.completed', onTaskEvent);
+      socket.on('task.failed', onTaskEvent);
+      socket.on('task.created.global', onTaskEvent);
+
+      const onApprovalEvent = () => {
+        refetchApprovals()
+          .then(replaceApprovals)
+          .catch((err) => console.error('[realtime] refetch approvals', err));
+      };
+      socket.on('approval.created', onApprovalEvent);
+      socket.on('approval.resolved', onApprovalEvent);
+
+      socketRef.current = socket;
+    })().catch((err) => {
+      if (!cancelled) console.error('[realtime] handshake falhou', err);
     });
+
     return () => {
       cancelled = true;
-      disconnectSocket();
+      const s = socketRef.current ?? socket;
+      if (s) {
+        s.removeAllListeners();
+        s.disconnect();
+      }
+      socketRef.current = null;
+      setSocketConnected(false);
     };
-  }, [isLoaded, isSignedIn, orgId, getToken]);
+  }, [
+    isLoaded,
+    isSignedIn,
+    orgId,
+    getToken,
+    setSocketConnected,
+    updateAgentState,
+    replaceTasks,
+    replaceApprovals,
+  ]);
 
   return <>{children}</>;
 };

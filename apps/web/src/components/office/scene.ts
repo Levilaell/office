@@ -6,7 +6,8 @@ import {
   Text,
   type TickerCallback,
 } from 'pixi.js';
-import { AGENT_STATE_VISUALS, type MockAgent } from './agents-mock';
+import type { RenderAgent } from './agent-render';
+import { AGENT_STATE_VISUALS } from './visuals';
 import { TILE_HEIGHT, TILE_WIDTH, type WorldCoord, worldToScreen } from './iso';
 import { DEPARTMENT_COLORS, ROOMS } from './rooms';
 
@@ -22,12 +23,12 @@ const DIAMOND_VERTICES: readonly number[] = [
 ];
 
 export type SceneApi = {
-  updateAgents: (agents: MockAgent[]) => void;
+  updateAgents: (agents: RenderAgent[]) => void;
   destroy: () => void;
 };
 
 export type SceneOptions = {
-  agents: MockAgent[];
+  agents: RenderAgent[];
   onAgentClick: (id: string) => void;
   onRoomClick: (department: string) => void;
 };
@@ -186,11 +187,11 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
     avatarContainers.length = 0;
   }
 
-  function renderAvatars(agents: MockAgent[]) {
+  function renderAvatars(agents: RenderAgent[]) {
     clearAvatars();
 
     for (const agent of agents) {
-      const room = ROOMS.find((r) => r.department === agent.department);
+      const room = ROOMS.find((r) => r.department === agent.roomDepartment);
       if (!room) continue;
 
       const visual = AGENT_STATE_VISUALS[agent.state];

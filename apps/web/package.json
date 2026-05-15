@@ -19,7 +19,6 @@
     "@office/shared-events": "workspace:*",
     "@office/shared-prompts": "workspace:*",
     "@office/shared-types": "workspace:*",
-    "zod": "^3.23.8",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
@@ -33,7 +32,9 @@
     "socket.io-client": "^4.8.3",
     "svix": "^1.93.0",
     "tailwind-merge": "^2.5.5",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.23.8",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

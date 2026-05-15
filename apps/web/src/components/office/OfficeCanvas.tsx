@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from 'react';
 import { Application } from 'pixi.js';
-import type { MockAgent } from './agents-mock';
+import type { RenderAgent } from './agent-render';
 import { renderScene, type SceneApi } from './scene';
 
 export type OfficeCanvasProps = {
-  agents: MockAgent[];
+  agents: RenderAgent[];
   onAgentClick?: (agentId: string) => void;
   onRoomClick?: (department: string) => void;
 };
