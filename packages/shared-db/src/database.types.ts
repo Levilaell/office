@@ -332,6 +332,127 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          account_id: string
+          channel: string
+          channel_handle: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          metadata: Json
+          status: string
+          subject: string | null
+          tenant_id: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          channel: string
+          channel_handle: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          metadata?: Json
+          status?: string
+          subject?: string | null
+          tenant_id: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          channel?: string
+          channel_handle?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          metadata?: Json
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interactions: {
+        Row: {
+          account_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          metadata: Json
+          sender_id: string | null
+          sender_type: string
+          tenant_id: string
+        }
+        Insert: {
+          account_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          metadata?: Json
+          sender_id?: string | null
+          sender_type: string
+          tenant_id: string
+        }
+        Update: {
+          account_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          metadata?: Json
+          sender_id?: string | null
+          sender_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           account_id: string | null

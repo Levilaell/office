@@ -7,6 +7,7 @@ import { isAgentState } from '@office/shared-types';
 import { useRealtimeStore } from '@/lib/realtime-store';
 import type {
   ApprovalSnapshot,
+  ConversationSnapshot,
   InitialSnapshot,
   TaskSnapshot,
 } from '@/lib/realtime-types';
@@ -32,6 +33,13 @@ const refetchApprovals = async (): Promise<ApprovalSnapshot[]> => {
   return body.approvals;
 };
 
+const refetchConversations = async (): Promise<ConversationSnapshot[]> => {
+  const r = await fetch('/api/conversations?status=open', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`conversations fetch failed: ${r.status}`);
+  const body = (await r.json()) as { conversations: ConversationSnapshot[] };
+  return body.conversations;
+};
+
 export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const { isLoaded, isSignedIn, orgId, getToken } = useAuth();
   const socketRef = useRef<Socket | null>(null);
@@ -40,6 +48,7 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const updateAgentState = useRealtimeStore((s) => s.updateAgentState);
   const replaceTasks = useRealtimeStore((s) => s.replaceTasks);
   const replaceApprovals = useRealtimeStore((s) => s.replaceApprovals);
+  const replaceConversations = useRealtimeStore((s) => s.replaceConversations);
 
   // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
   useEffect(() => {
@@ -115,6 +124,15 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
       socket.on('approval.created', onApprovalEvent);
       socket.on('approval.resolved', onApprovalEvent);
 
+      // interaction.received: refetch a lista de conversations abertas.
+      // Delta merge fica pra TD-003 junto com o refactor geral de deltas.
+      const onInteractionReceived = () => {
+        refetchConversations()
+          .then(replaceConversations)
+          .catch((err) => console.error('[realtime] refetch conversations', err));
+      };
+      socket.on('interaction.received', onInteractionReceived);
+
       socketRef.current = socket;
     })().catch((err) => {
       if (!cancelled) console.error('[realtime] handshake falhou', err);
@@ -139,6 +157,7 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     updateAgentState,
     replaceTasks,
     replaceApprovals,
+    replaceConversations,
   ]);
 
   return <>{children}</>;

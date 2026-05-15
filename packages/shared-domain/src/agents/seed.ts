@@ -37,6 +37,30 @@ const DEFAULT_AGENTS: DefaultAgentDefinition[] = [
     budget: { maxTokens: 1500, maxCostUsd: 0.02, maxTurns: 1 },
     tools: [],
   },
+  {
+    agentKey: 'atendimento.coordenador',
+    role: 'coordinator',
+    department: 'atendimento',
+    name: 'Coordenador de Atendimento',
+    description:
+      'Recebe interações de clientes finais, decide se responde via FAQ, escala pra outro departamento ou aguarda input humano.',
+    tier: 'default',
+    autonomyTier: 'sugestivo',
+    budget: { maxTokens: 4000, maxCostUsd: 0.05, maxTurns: 5 },
+    tools: [],
+  },
+  {
+    agentKey: 'atendimento.especialista_faq',
+    role: 'specialist',
+    department: 'atendimento',
+    name: 'Especialista em FAQ',
+    description:
+      'Responde perguntas frequentes sobre obrigações fiscais simples, pagamento de impostos, comprovantes e procedimentos comuns de escritório contábil.',
+    tier: 'triage',
+    autonomyTier: 'sugestivo',
+    budget: { maxTokens: 2000, maxCostUsd: 0.02, maxTurns: 2 },
+    tools: [],
+  },
 ];
 
 /**

@@ -4,6 +4,7 @@ import type { AgentState, Department } from '@office/shared-types';
 import type {
   AgentSnapshot,
   ApprovalSnapshot,
+  ConversationSnapshot,
   InitialSnapshot,
   TaskSnapshot,
 } from './realtime-types';
@@ -12,6 +13,7 @@ export type RealtimeState = {
   agents: Record<string, AgentSnapshot>;
   tasks: Record<string, TaskSnapshot>;
   approvals: Record<string, ApprovalSnapshot>;
+  conversations: Record<string, ConversationSnapshot>;
   hydrated: boolean;
   socketConnected: boolean;
 
@@ -29,6 +31,8 @@ export type RealtimeState = {
   upsertApproval: (snap: ApprovalSnapshot) => void;
   replaceApprovals: (snaps: ApprovalSnapshot[]) => void;
   removeApproval: (id: string) => void;
+  upsertConversation: (snap: ConversationSnapshot) => void;
+  replaceConversations: (snaps: ConversationSnapshot[]) => void;
 };
 
 const indexById = <T extends { id: string }>(items: T[]): Record<string, T> => {
@@ -41,6 +45,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
   agents: {},
   tasks: {},
   approvals: {},
+  conversations: {},
   hydrated: false,
   socketConnected: false,
 
@@ -49,6 +54,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       agents: indexById(snapshot.agents),
       tasks: indexById(snapshot.tasks),
       approvals: indexById(snapshot.approvals),
+      conversations: indexById(snapshot.conversations),
       hydrated: true,
     }),
 
@@ -89,6 +95,11 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       delete next[id];
       return { approvals: next };
     }),
+
+  upsertConversation: (snap) =>
+    set((cur) => ({ conversations: { ...cur.conversations, [snap.id]: snap } })),
+
+  replaceConversations: (snaps) => set({ conversations: indexById(snaps) }),
 }));
 
 // -----------------------------------------------------------------------------
@@ -132,6 +143,35 @@ export const useRecentTasks = (limit = 20): TaskSnapshot[] =>
       return all.slice(0, limit);
     }),
   );
+
+// Ordena por lastMessageAt DESC, com nulls por último — conversations recém
+// criadas sem mensagem entram no fim e desempate por createdAt seria útil mas
+// snapshot não carrega o createdAt; mantém estável por id como tie-breaker.
+// Helper puro pra ser testável sem render React.
+export const sortConversationsByLastMessage = (
+  items: ConversationSnapshot[],
+): ConversationSnapshot[] => {
+  const all = items.slice();
+  all.sort((a, b) => {
+    const av = a.lastMessageAt;
+    const bv = b.lastMessageAt;
+    if (av === bv) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return av < bv ? 1 : -1;
+  });
+  return all;
+};
+
+export const useConversations = (): ConversationSnapshot[] =>
+  useRealtimeStore(
+    useShallow((s) => sortConversationsByLastMessage(Object.values(s.conversations))),
+  );
+
+export const useConversation = (
+  id: string | null | undefined,
+): ConversationSnapshot | null =>
+  useRealtimeStore((s) => (id ? (s.conversations[id] ?? null) : null));
 
 export const useHydrated = (): boolean => useRealtimeStore((s) => s.hydrated);
 export const useSocketConnected = (): boolean =>
