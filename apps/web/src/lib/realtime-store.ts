@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import type { AgentState, Department } from '@office/shared-types';
 import type {
   AgentSnapshot,
@@ -92,22 +93,27 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
 
 // -----------------------------------------------------------------------------
 // Selectors públicos — única superfície que componentes devem consumir.
+//
+// Selectors que retornam ARRAY derivado (Object.values, filter, slice) usam
+// useShallow — sem isso, cada render cria ref nova e o useSyncExternalStore do
+// Zustand entra em loop ("getServerSnapshot should be cached"). Selectors que
+// retornam ref estável (lookup por id, primitivo) dispensam shallow.
 // -----------------------------------------------------------------------------
 
 export const useAgents = (): AgentSnapshot[] =>
-  useRealtimeStore((s) => Object.values(s.agents));
+  useRealtimeStore(useShallow((s) => Object.values(s.agents)));
 
 export const useAgent = (id: string | null | undefined): AgentSnapshot | null =>
   useRealtimeStore((s) => (id ? (s.agents[id] ?? null) : null));
 
 export const useAgentsByDepartment = (dept: Department): AgentSnapshot[] =>
-  useRealtimeStore((s) =>
-    Object.values(s.agents).filter((a) => a.department === dept),
+  useRealtimeStore(
+    useShallow((s) => Object.values(s.agents).filter((a) => a.department === dept)),
   );
 
 export const usePendingApprovals = (): ApprovalSnapshot[] =>
-  useRealtimeStore((s) =>
-    Object.values(s.approvals).filter((a) => a.status === 'pending'),
+  useRealtimeStore(
+    useShallow((s) => Object.values(s.approvals).filter((a) => a.status === 'pending')),
   );
 
 export const useApproval = (id: string | null | undefined): ApprovalSnapshot | null =>
@@ -117,11 +123,15 @@ export const useTask = (id: string | null | undefined): TaskSnapshot | null =>
   useRealtimeStore((s) => (id ? (s.tasks[id] ?? null) : null));
 
 export const useRecentTasks = (limit = 20): TaskSnapshot[] =>
-  useRealtimeStore((s) => {
-    const all = Object.values(s.tasks);
-    all.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
-    return all.slice(0, limit);
-  });
+  useRealtimeStore(
+    useShallow((s) => {
+      const all = Object.values(s.tasks);
+      all.sort((a, b) =>
+        a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+      );
+      return all.slice(0, limit);
+    }),
+  );
 
 export const useHydrated = (): boolean => useRealtimeStore((s) => s.hydrated);
 export const useSocketConnected = (): boolean =>
