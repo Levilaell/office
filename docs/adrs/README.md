@@ -12,6 +12,11 @@ Decisões arquiteturais da Plataforma Contábil em ordem cronológica. Formato: 
 - [ADR-006](ADR-006-audit-log-insert-only.md) — audit_log INSERT-only e campos mandatórios
 - [ADR-007](ADR-007-clerk-webhook-onboarding-sincrono.md) — Sincronização Clerk → DB via webhook + onboarding síncrono
 - [ADR-008](ADR-008-llm-tier-abstraction.md) — Abstração de tier de LLM com override por env
+- [ADR-009](ADR-009-socket-io-no-agent-runtime.md) — Socket.io server vive em `apps/agent-runtime` (substitui detalhe do ADR-003)
+- [ADR-010](010-orquestracao-agentes.md) — Modelo de orquestração de agentes em 3 camadas + supervisor
+- [ADR-011](011-ux-quatro-superficies.md) — UX em quatro superfícies complementares (inbox, conversa, painel, escritório 2D)
+- [ADR-012](012-supabase-cloud-migration.md) — Supabase Cloud como ambiente de desenvolvimento
+- [ADR-013](013-redis-nativo-dev.md) — Redis nativo no WSL como backend de filas em dev
 
 ## Convenção
 
