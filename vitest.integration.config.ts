@@ -11,5 +11,8 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     setupFiles: ['./tests/setup/load-env.ts'],
+    // Testes de integração rodam contra o MESMO Postgres/Redis local —
+    // paralelismo entre files corromperia o seed compartilhado.
+    fileParallelism: false,
   },
 });

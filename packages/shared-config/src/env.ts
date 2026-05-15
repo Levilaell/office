@@ -14,6 +14,15 @@ export type BaseEnv = z.infer<typeof baseEnvSchema>;
 export const parseBaseEnv = (raw: NodeJS.ProcessEnv = process.env): BaseEnv =>
   baseEnvSchema.parse(raw);
 
+const redisEnvSchema = baseEnvSchema.extend({
+  REDIS_URL: z.string().min(1),
+});
+
+export type RedisEnv = z.infer<typeof redisEnvSchema>;
+
+export const parseRedisEnv = (raw: NodeJS.ProcessEnv = process.env): RedisEnv =>
+  redisEnvSchema.parse(raw);
+
 const supabaseEnvSchema = baseEnvSchema.extend({
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
@@ -34,6 +43,9 @@ const webEnvSchema = supabaseEnvSchema.extend({
   NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().min(1).default('/sign-up'),
   NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: z.string().min(1).default('/dashboard'),
   NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: z.string().min(1).default('/onboarding'),
+  NEXT_PUBLIC_AGENT_RUNTIME_URL: z.string().url().default('http://localhost:3001'),
+  INTERNAL_SERVICE_TOKEN: z.string().min(1).optional(),
+  REDIS_URL: z.string().min(1).optional(),
 });
 
 export type WebEnv = z.infer<typeof webEnvSchema>;
@@ -55,7 +67,16 @@ export type LlmEnv = z.infer<typeof llmEnvSchema>;
 export const parseLlmEnv = (raw: NodeJS.ProcessEnv = process.env): LlmEnv =>
   llmEnvSchema.parse(raw);
 
-const agentRuntimeEnvSchema = llmEnvSchema;
+const agentRuntimeEnvSchema = llmEnvSchema.extend({
+  REDIS_URL: z.string().min(1),
+  BULLMQ_CONCURRENCY: z.coerce.number().int().positive().default(5),
+  INTERNAL_SERVICE_TOKEN: z.string().min(1),
+  WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
+  CLERK_DOMAIN: z.string().min(1),
+  CLERK_SECRET_KEY: z.string().min(1),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+});
 
 export type AgentRuntimeEnv = z.infer<typeof agentRuntimeEnvSchema>;
 

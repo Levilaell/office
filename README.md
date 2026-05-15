@@ -16,11 +16,16 @@ Plataforma multi-tenant de agentes de IA para escritórios contábeis brasileiro
 # Supabase local (Postgres + Studio + Kong em http://localhost:54323)
 pnpm db:start
 
-# Redis (BullMQ — necessário a partir da Sprint 0.3b)
+# Redis (BullMQ + pub/sub — obrigatório a partir da Sprint 0.3b)
 docker compose up -d redis
 
 # Conferir saúde
 docker compose ps
+
+# Tudo junto pra dev local:
+docker compose up -d redis    # Redis
+pnpm db:start                 # Supabase
+pnpm dev                      # web (3000), agent-runtime (3001 http+ws), workers
 ```
 
 Pra parar:
@@ -50,22 +55,24 @@ pnpm dev                      # sobe os três apps em paralelo
 ```
 
 - `apps/web` — Next.js (UI + API routes) — http://localhost:3000
-- `apps/agent-runtime` — serviço Node (Hono) — http://localhost:3001
-- `apps/workers` — workers BullMQ (sem servidor HTTP)
+- `apps/agent-runtime` — serviço Node (Hono + Socket.io + workers BullMQ) — http://localhost:3001 (http + ws no `/socket.io`)
+- `apps/workers` — placeholder reservado para notificações outbound (sem código real ainda; workers de agente vivem em `apps/agent-runtime`)
 
 ## Estrutura
 
 ```
 apps/
   web/              Next.js 15 App Router
-  agent-runtime/    Node + Hono
-  workers/          Node + BullMQ
+  agent-runtime/    Node + Hono + Socket.io + workers BullMQ
+  workers/          Reservado pra notificações outbound (placeholder)
 packages/
   shared-types/     Tipos TS compartilhados
   shared-config/    Validação de env (Zod) e constants
   shared-db/        Cliente Supabase, tipos gerados
   shared-prompts/   Prompts versionados (placeholder)
   shared-domain/    Repositórios + modelo contábil
+  shared-events/    BullMQ + Redis pub/sub + schemas de eventos
+  shared-llm/       Wrapper Anthropic + tracing Langfuse + budget
 supabase/
   migrations/       SQL migrations
   config.toml       config local

@@ -14,13 +14,16 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.8",
     "@hono/node-server": "^1.13.7",
     "@office/shared-config": "workspace:*",
     "@office/shared-domain": "workspace:*",
+    "@office/shared-events": "workspace:*",
     "@office/shared-llm": "workspace:*",
     "@office/shared-prompts": "workspace:*",
     "@office/shared-types": "workspace:*",
-    "hono": "^4.6.14"
+    "hono": "^4.6.14",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

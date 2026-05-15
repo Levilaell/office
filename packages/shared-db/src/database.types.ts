@@ -78,6 +78,260 @@ export type Database = {
           },
         ]
       }
+      agent_messages: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          role: string
+          run_id: string
+          tenant_id: string
+          turn_index: number
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          role: string
+          run_id: string
+          tenant_id: string
+          turn_index: number
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          role?: string
+          run_id?: string
+          tenant_id?: string
+          turn_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_runs: {
+        Row: {
+          agent_id: string
+          completed_at: string | null
+          cost_usd: number
+          error_message: string | null
+          id: string
+          started_at: string
+          status: string
+          task_id: string
+          tenant_id: string
+          tokens_used: number
+          trace_id: string
+          turns: number
+        }
+        Insert: {
+          agent_id: string
+          completed_at?: string | null
+          cost_usd?: number
+          error_message?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          task_id: string
+          tenant_id: string
+          tokens_used?: number
+          trace_id: string
+          turns?: number
+        }
+        Update: {
+          agent_id?: string
+          completed_at?: string | null
+          cost_usd?: number
+          error_message?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          task_id?: string
+          tenant_id?: string
+          tokens_used?: number
+          trace_id?: string
+          turns?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          agent_key: string
+          autonomy_tier: string
+          budget: Json
+          created_at: string
+          department: string
+          description: string | null
+          id: string
+          name: string
+          role: string
+          state: string
+          state_metadata: Json
+          tenant_id: string
+          tier: string
+          tools: Json
+          updated_at: string
+        }
+        Insert: {
+          agent_key: string
+          autonomy_tier?: string
+          budget?: Json
+          created_at?: string
+          department: string
+          description?: string | null
+          id?: string
+          name: string
+          role: string
+          state?: string
+          state_metadata?: Json
+          tenant_id: string
+          tier: string
+          tools?: Json
+          updated_at?: string
+        }
+        Update: {
+          agent_key?: string
+          autonomy_tier?: string
+          budget?: Json
+          created_at?: string
+          department?: string
+          description?: string | null
+          id?: string
+          name?: string
+          role?: string
+          state?: string
+          state_metadata?: Json
+          tenant_id?: string
+          tier?: string
+          tools?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approvals: {
+        Row: {
+          action_type: string
+          agent_id: string
+          context: Json
+          created_at: string
+          decided_at: string | null
+          decision: Json | null
+          expires_at: string | null
+          id: string
+          proposal: Json
+          reviewer_user_id: string | null
+          status: string
+          task_id: string
+          tenant_id: string
+          trace_id: string
+        }
+        Insert: {
+          action_type: string
+          agent_id: string
+          context?: Json
+          created_at?: string
+          decided_at?: string | null
+          decision?: Json | null
+          expires_at?: string | null
+          id?: string
+          proposal: Json
+          reviewer_user_id?: string | null
+          status?: string
+          task_id: string
+          tenant_id: string
+          trace_id: string
+        }
+        Update: {
+          action_type?: string
+          agent_id?: string
+          context?: Json
+          created_at?: string
+          decided_at?: string | null
+          decision?: Json | null
+          expires_at?: string | null
+          id?: string
+          proposal?: Json
+          reviewer_user_id?: string | null
+          status?: string
+          task_id?: string
+          tenant_id?: string
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           account_id: string | null
@@ -188,6 +442,92 @@ export type Database = {
           },
           {
             foreignKeyName: "entities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          account_id: string | null
+          assigned_agent_id: string | null
+          completed_at: string | null
+          created_at: string
+          due_at: string | null
+          id: string
+          parent_task_id: string | null
+          payload: Json
+          priority: number
+          result: Json | null
+          started_at: string | null
+          status: string
+          task_type: string
+          tenant_id: string
+          trace_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          assigned_agent_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          parent_task_id?: string | null
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          task_type: string
+          tenant_id: string
+          trace_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          assigned_agent_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          parent_task_id?: string | null
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          task_type?: string
+          tenant_id?: string
+          trace_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

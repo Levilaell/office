@@ -1,7 +1,7 @@
 # ADR-003: Padrão de comunicação entre `apps/web` e `apps/agent-runtime`
 
 Data: 2026-05-15
-Status: aceito
+Status: aceito (item 3 atualizado pelo ADR-009)
 
 ## Contexto
 
@@ -13,7 +13,7 @@ Três canais com responsabilidades distintas:
 
 1. **HTTP REST (web → agent-runtime):** operações síncronas com resposta rápida (consulta de status, listagem, triagem curta). Contratos validados com Zod nas duas pontas.
 2. **BullMQ (Redis):** trabalho assíncrono de agente (execução, processamento de documento, workflows). Web enfileira, agent-runtime consome via workers internos.
-3. **Redis pub/sub via Socket.io:** notificações ao usuário em tempo real (status de tarefa, aprovação pendente, eventos do escritório virtual). Agent-runtime publica em canal `tenant:{id}`; web (Socket.io server) repassa ao cliente.
+3. **Redis pub/sub via Socket.io:** notificações ao usuário em tempo real (status de tarefa, aprovação pendente, eventos do escritório virtual). Agent-runtime publica em canal `tenant:{id}`. **Atualização (ADR-009):** o Socket.io server foi movido pro `apps/agent-runtime` na Sprint 0.3b — o web só hospeda o cliente. Motivação no ADR-009.
 
 Auth entre serviços: token HMAC interno (`INTERNAL_SERVICE_TOKEN`) em payload assinado contendo `tenant_id`, `user_id`, `roles` previamente validados pelo Clerk no `apps/web`. Timestamps com janela de 30s pra mitigar replay. JWT do Clerk não trafega entre serviços.
 
