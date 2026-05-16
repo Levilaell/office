@@ -2,94 +2,18 @@
 
 Plataforma multi-tenant de agentes de IA para escritórios contábeis brasileiros.
 
-## Rodar localmente
+**Status:** Fim da Fase 0 — Fundações (✅ `v0.1.0-fase-0`). Hello world ponta a ponta validado (web → BullMQ → agent-runtime → Claude → audit/Langfuse), custo de LLM medido, infra multi-tenant funcionando com Clerk + Supabase Cloud + Redis nativo + Socket.io.
 
-### Pré-requisitos
+Próxima fase: implementação do primeiro departamento (Atendimento).
 
-- Node 20+, pnpm 10+
-- Docker (Desktop, OrbStack ou compatível) — usado por Supabase e Redis
-- Supabase CLI (já em `devDependencies` do workspace)
+## Setup
 
-### Dependências de infra
-
-```bash
-# Supabase local (Postgres + Studio + Kong em http://localhost:54323)
-pnpm db:start
-
-# Redis (BullMQ + pub/sub — obrigatório a partir da Sprint 0.3b)
-docker compose up -d redis
-
-# Conferir saúde
-docker compose ps
-
-# Tudo junto pra dev local:
-docker compose up -d redis    # Redis
-pnpm db:start                 # Supabase
-pnpm dev                      # web (3000), agent-runtime (3001 http+ws), workers
-```
-
-Pra parar:
-
-```bash
-pnpm db:stop
-docker compose down            # mantém dados do Redis no volume
-docker compose down -v         # apaga volumes (Redis zera)
-```
-
-### Variáveis de ambiente
-
-- `.env.example` na raiz — variáveis comuns aos apps (ex: `REDIS_URL`)
-- `apps/web/.env.local.example` — Clerk + Supabase
-- `apps/agent-runtime/.env.example` — Anthropic + Langfuse (a partir da Sprint 0.3a)
+Pra subir o projeto do zero numa máquina nova, ver **[docs/development.md](./docs/development.md)** — pré-requisitos, envs, infra (Redis nativo + Supabase Cloud), validação e gotchas.
 
 ```bash
 pnpm install
-cp apps/web/.env.local.example apps/web/.env.local
-# preencher CLERK_* e SUPABASE_* (URL + keys vêm do `db:start`)
-```
-
-### Apps
-
-```bash
-pnpm dev                      # sobe os três apps em paralelo
-```
-
-- `apps/web` — Next.js (UI + API routes) — http://localhost:3000
-- `apps/agent-runtime` — serviço Node (Hono + Socket.io + workers BullMQ) — http://localhost:3001 (http + ws no `/socket.io`)
-- `apps/workers` — placeholder reservado para notificações outbound (sem código real ainda; workers de agente vivem em `apps/agent-runtime`)
-
-### Testar fluxo de triagem (Sprint 0.3c)
-
-Pipeline completo: API web → BullMQ → agent-runtime → Claude → audit/Langfuse.
-
-```bash
-# 1. subir infra
-docker compose up -d redis
-pnpm db:start
-
-# 2. subir apps (em outro terminal)
+# seguir docs/development.md pra envs e infra
 pnpm dev
-
-# 3. seedar roteador em tenants existentes (idempotente)
-pnpm seed:agents
-
-# 4. validação rápida via teste de integração (precisa de ANTHROPIC_API_KEY + LANGFUSE_*)
-pnpm test:integration
-```
-
-Disparar `POST /api/triagem` via browser autenticado:
-
-```bash
-# Recupera session cookie do browser logado, depois:
-curl -X POST http://localhost:3000/api/triagem \
-  -H 'cookie: <session do browser>' \
-  -H 'content-type: application/json' \
-  -d '{"text":"Recebi um boleto de ICMS pra pagar, qual o vencimento?"}'
-# → 202 { "taskId": "...", "traceId": "..." }
-
-# Acompanhar status:
-curl http://localhost:3000/api/tasks/<taskId> -H 'cookie: <session>'
-# → { "status": "completed", "result": { "department": "fiscal", ... } }
 ```
 
 ## Estrutura
@@ -111,7 +35,7 @@ supabase/
   migrations/       SQL migrations
   config.toml       config local
 tests/
-  integration/      RLS / multi-tenant (vai contra Supabase local)
+  integration/      RLS / multi-tenant (roda contra Supabase Cloud do dev)
 ```
 
 ## Comandos
@@ -122,30 +46,22 @@ tests/
 - `pnpm lint` — lint
 - `pnpm typecheck` — type-check em todos os pacotes
 - `pnpm test` — testes unitários (Vitest)
-- `pnpm test:integration` — testes de RLS contra Supabase local
+- `pnpm test:integration` — testes de RLS contra Supabase Cloud
 
-### Supabase
-- `pnpm db:start` — sobe Postgres + Studio + Kong locais (Docker)
-- `pnpm db:stop` — derruba os containers
-- `pnpm db:reset` — recria DB e aplica todas as migrations do zero
-- `pnpm db:migrate` — aplica migrations pendentes
-- `pnpm db:types` — gera tipos TS em `packages/shared-db/src/database.types.ts`
-- `pnpm db:diff` — gera migration a partir de mudanças no schema
+### Supabase (Cloud em dev — ver ADR-012)
+
+- `pnpm exec supabase login` — autentica a CLI
+- `pnpm exec supabase link --project-ref <ref>` — linka projeto local com cloud
+- `pnpm exec supabase db push --linked` — aplica migrations no projeto cloud
+- `pnpm exec supabase db diff --linked` — gera migration a partir do schema (precisa de Docker pra shadow DB)
+- `pnpm exec supabase gen types typescript --linked > packages/shared-db/src/database.types.ts`
 
 ## Integração Clerk + Supabase
 
 Usamos **Third-Party Auth Native** (Clerk como issuer, Supabase valida JWT via JWKS).
 Não usamos o JWT template legado, que foi deprecated em abril/2025.
 
-Pra ativar localmente:
-
-1. `CLERK_DOMAIN=<seu-app>.clerk.accounts.dev` no `apps/web/.env.local`
-2. No `supabase/config.toml`, mudar `[auth.third_party.clerk] enabled = true`
-3. `pnpm db:stop && pnpm db:start`
-
-O domain é validado pelo Supabase contra a API do Clerk no boot. Por isso o
-default da config é `enabled = false` — `pnpm db:start` precisa funcionar
-offline (CI, dev sem keys).
+Configuração no Supabase Cloud: Dashboard → Authentication → Sign In/Up → Third Party Auth → adicionar Clerk com `CLERK_DOMAIN` (sem `https://`). Detalhes em [docs/development.md](./docs/development.md#supabase-cloud-adr-012).
 
 ## CI
 
