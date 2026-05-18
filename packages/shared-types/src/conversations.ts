@@ -44,6 +44,12 @@ export type Conversation = {
   channelHandle: string;
   status: ConversationStatus;
   subject: string | null;
+  /**
+   * Última classificação de intent feita pelo Coordenador (Sprint 1.2+).
+   * Slug hierárquico (ex: `operacional.status_obrigacao`). NULL antes da
+   * primeira classificação ou pra conversas que não passam pelo coord.
+   */
+  intentCurrent: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
   metadata: Record<string, unknown>;

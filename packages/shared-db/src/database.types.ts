@@ -339,6 +339,7 @@ export type Database = {
           channel_handle: string
           created_at: string
           id: string
+          intent_current: string | null
           last_message_at: string | null
           metadata: Json
           status: string
@@ -353,6 +354,7 @@ export type Database = {
           channel_handle: string
           created_at?: string
           id?: string
+          intent_current?: string | null
           last_message_at?: string | null
           metadata?: Json
           status?: string
@@ -367,6 +369,7 @@ export type Database = {
           channel_handle?: string
           created_at?: string
           id?: string
+          intent_current?: string | null
           last_message_at?: string | null
           metadata?: Json
           status?: string
