@@ -28,3 +28,7 @@ export {
   coordenadorAtendimentoPrompt,
   type CoordenadorPromptInput,
 } from './atendimento/coordenador.js';
+export {
+  especialistaOperacionalPrompt,
+  type EspecialistaOperacionalPromptInput,
+} from './atendimento/especialista_operacional.js';

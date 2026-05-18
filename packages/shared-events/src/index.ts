@@ -22,6 +22,7 @@ export {
   AgentHandoffRequestedPayload,
   ConversationIntentChangedPayload,
   AgentEscalatedHumanPayload,
+  SpecialistRespondedPayload,
   AgentTaskJobPayload,
   isEventType,
   type EventType,

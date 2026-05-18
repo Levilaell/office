@@ -30,6 +30,10 @@ export const EVENT_TYPES = [
   'agent.handoff_requested',
   'conversation.intent_changed',
   'agent.escalated_human',
+  // Sprint 1.3 — Especialista Operacional. Publica ao final do processamento
+  // (respond ou escalate ou clarification). UI escuta pra atualizar lista
+  // de conversations sem refetch.
+  'specialist.responded',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -217,6 +221,34 @@ export const AgentEscalatedHumanPayload = z.object({
   traceId: z.string().min(1),
 });
 export type AgentEscalatedHumanPayload = z.infer<typeof AgentEscalatedHumanPayload>;
+
+// Sprint 1.3 — Especialista Operacional ------------------------------------
+
+/**
+ * Especialista terminou de processar um handoff. Publica sempre, qualquer
+ * que tenha sido a `action` (respond/escalate/clarification). UI escuta
+ * pra atualizar lista de conversations + inbox de drafts sem refetch.
+ *
+ * `messageId` é o id da mensagem outbound criada (null em escalate_human
+ * caso não tenha mandado T05). `draftId` é o registro em `message_drafts`
+ * (sempre criado pra rastreabilidade, mesmo em tier sugestivo da Fase 1
+ * onde a mensagem já foi enviada — status='auto_approved').
+ */
+export const SpecialistRespondedPayload = z.object({
+  tenantId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid().nullable(),
+  draftId: z.string().uuid().nullable(),
+  agentId: z.string().uuid(),
+  agentKey: z.string().min(1),
+  traceId: z.string().min(1),
+  intent: z.string().min(1),
+  action: z.enum(['respond', 'escalate_human', 'request_clarification']),
+  // Ids de obligations/documents consultados — útil pra auditoria de UI
+  // ("essa resposta foi baseada em obrigação X").
+  dataUsed: z.array(z.string()).default([]),
+});
+export type SpecialistRespondedPayload = z.infer<typeof SpecialistRespondedPayload>;
 
 // Envelope --------------------------------------------------------------------
 
