@@ -19,3 +19,18 @@ export {
 } from './types';
 
 export { getChannelAdapter } from './registry';
+
+export {
+  getActiveChannelSessionsForTenant,
+  getChannelSession,
+  getChannelSessionsByChannel,
+  listChannelSessionsForTenant,
+  toChannelSession,
+  updateChannelSessionStatus,
+  upsertChannelSession,
+  type ChannelSessionRow,
+  type ChannelSessionInsert,
+  type ChannelSessionUpdate,
+  type UpsertChannelSessionInput,
+  type UpdateChannelSessionStatusInput,
+} from './sessions';

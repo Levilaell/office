@@ -337,6 +337,62 @@ export type Database = {
           },
         ]
       }
+      channel_sessions: {
+        Row: {
+          channel: string
+          connection_metadata: Json
+          created_at: string
+          display_name: string | null
+          error_details: Json | null
+          id: string
+          identifier: string | null
+          last_health_check: string | null
+          last_message_at: string | null
+          secrets_ref: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          connection_metadata?: Json
+          created_at?: string
+          display_name?: string | null
+          error_details?: Json | null
+          id?: string
+          identifier?: string | null
+          last_health_check?: string | null
+          last_message_at?: string | null
+          secrets_ref?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          connection_metadata?: Json
+          created_at?: string
+          display_name?: string | null
+          error_details?: Json | null
+          id?: string
+          identifier?: string | null
+          last_health_check?: string | null
+          last_message_at?: string | null
+          secrets_ref?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           account_id: string
