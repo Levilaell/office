@@ -21,7 +21,8 @@
     "db:migrate": "supabase migration up --local",
     "db:types": "supabase gen types typescript --local > packages/shared-db/src/database.types.ts",
     "db:diff": "supabase db diff",
-    "seed:agents": "tsx scripts/seed-existing-tenants.ts"
+    "seed:agents": "tsx scripts/seed-existing-tenants.ts",
+    "seed:email-channel": "tsx scripts/seed-email-channel.ts"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.66.0",
