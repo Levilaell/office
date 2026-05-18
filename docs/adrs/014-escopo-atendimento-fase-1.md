@@ -1,7 +1,7 @@
 # ADR-014: Escopo do Departamento de Atendimento na Fase 1
 
-**Data:** 2026-05-18
-**Status:** aceito
+Data: 2026-05-18
+Status: aceito
 
 ## Contexto
 

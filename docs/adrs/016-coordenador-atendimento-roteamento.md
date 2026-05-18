@@ -1,7 +1,7 @@
 # ADR-016: Coordenador de Atendimento como camada de roteamento de departamento
 
-**Data:** 2026-05-18
-**Status:** aceito
+Data: 2026-05-18
+Status: aceito
 
 ## Contexto
 

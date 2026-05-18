@@ -1,7 +1,7 @@
 # ADR-017: Modo shadow e tiers de autonomia em conversa síncrona
 
-**Data:** 2026-05-18
-**Status:** aceito
+Data: 2026-05-18
+Status: aceito
 
 ## Contexto
 

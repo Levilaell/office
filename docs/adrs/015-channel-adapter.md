@@ -1,7 +1,7 @@
 # ADR-015: Abstração ChannelAdapter para canais de comunicação
 
-**Data:** 2026-05-18
-**Status:** aceito
+Data: 2026-05-18
+Status: aceito
 
 ## Contexto
 
