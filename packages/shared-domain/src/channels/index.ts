@@ -26,6 +26,17 @@ export {
   type IngestedMessage,
 } from './ingest';
 
+export { resolveSecretRef } from './secrets';
+
+export {
+  EmailAdapter,
+  EmailConnectionMetadataSchema,
+  parseEmailConnectionMetadata,
+  type EmailConnectionMetadata,
+} from './adapters/email';
+
+export { SimulatedWebhookAdapter } from './adapters/simulated';
+
 export {
   getActiveChannelSessionsForTenant,
   getChannelSession,
