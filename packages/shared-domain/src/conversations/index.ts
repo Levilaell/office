@@ -208,3 +208,103 @@ export const listConversations = async (
   if (error) throw error;
   return data ?? [];
 };
+
+export {
+  recordClassification,
+  getLastClassification,
+  listClassificationsForConversation,
+  type ConversationClassificationRow,
+  type ConversationClassificationInsert,
+  type ClassificationDecision,
+  type RecordClassificationInput,
+} from './classifications';
+
+export type GetConversationByIdInput = {
+  conversationId: string;
+};
+
+/**
+ * Busca conversation por id. Usado pelo Coordenador pra carregar contexto
+ * antes de classificar. Service role bypassa RLS — caller valida tenant.
+ */
+export const getConversationById = async (
+  supabase: AnyClient,
+  conversationId: string,
+): Promise<ConversationRow | null> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+export const getMessageById = async (
+  supabase: AnyClient,
+  messageId: string,
+): Promise<MessageRow | null> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('id', messageId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Últimas N mensagens da conversation, mais antigas primeiro. Coordenador
+ * usa pra montar contexto antes de classificar a mensagem atual.
+ */
+export const getRecentMessages = async (
+  supabase: AnyClient,
+  conversationId: string,
+  limit = 5,
+): Promise<MessageRow[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  // DB veio DESC pra LIMIT eficiente; consumidor quer ASC (chronological).
+  return (data ?? []).slice().reverse();
+};
+
+export type UpdateConversationAssignmentInput = {
+  conversationId: string;
+  metadataPatch: Record<string, unknown>;
+};
+
+/**
+ * Patch incremental de `conversations.metadata`. Sprint 1.2 usa pra marcar
+ * `assigned_to_human=true` quando Coordenador escala — coluna dedicada
+ * (assigned_to / status='waiting_human') é refactor futuro pra evitar mexer
+ * no CHECK constraint de status nesta sprint.
+ */
+export const patchConversationMetadata = async (
+  supabase: AnyClient,
+  input: UpdateConversationAssignmentInput,
+): Promise<ConversationRow> => {
+  const current = await supabase
+    .from('conversations')
+    .select('metadata')
+    .eq('id', input.conversationId)
+    .single();
+  if (current.error) throw current.error;
+
+  const merged = {
+    ...(current.data.metadata as Record<string, unknown>),
+    ...input.metadataPatch,
+  };
+  const updated = await supabase
+    .from('conversations')
+    .update({ metadata: merged as Json })
+    .eq('id', input.conversationId)
+    .select()
+    .single();
+  if (updated.error) throw updated.error;
+  return updated.data;
+};

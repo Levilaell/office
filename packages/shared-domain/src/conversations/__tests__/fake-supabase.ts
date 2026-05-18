@@ -71,12 +71,21 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
   private insertRow: Record<string, unknown> | null = null;
   private updatePatch: Record<string, unknown> | null = null;
   private wantSingle: 'single' | 'maybeSingle' | null = null;
+  private orderCol: string | null = null;
+  private orderAsc: boolean = true;
+  private limitN: number | null = null;
+  private selectAfterMutation: boolean = false;
 
   constructor(private store: FakeSupabase, private table: string) {}
 
   select(cols: string = '*'): FakeQuery {
     this.selectedCols = cols;
-    if (this.mode !== 'insert') this.mode = 'select';
+    // insert().select() / update().select() devolvem rows mutadas.
+    if (this.mode === 'insert' || this.mode === 'update') {
+      this.selectAfterMutation = true;
+    } else {
+      this.mode = 'select';
+    }
     return this;
   }
 
@@ -97,11 +106,14 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
     return this;
   }
 
-  order(_col: string, _opts?: unknown): FakeQuery {
+  order(col: string, opts?: { ascending?: boolean; nullsFirst?: boolean }): FakeQuery {
+    this.orderCol = col;
+    this.orderAsc = opts?.ascending !== false;
     return this;
   }
 
-  limit(_n: number): FakeQuery {
+  limit(n: number): FakeQuery {
+    this.limitN = n;
     return this;
   }
 
@@ -164,15 +176,44 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
           r[k] = v as unknown;
         }
       }
+      // update().select().single()/.maybeSingle() → devolve a row atualizada.
+      // Sem .select(), supabase-js entrega { data: null }.
+      if (this.selectAfterMutation) {
+        if (this.wantSingle === 'single') {
+          if (matched.length === 0) {
+            return { data: null, error: { code: 'PGRST116', message: 'no rows' } };
+          }
+          return { data: matched[0], error: null };
+        }
+        if (this.wantSingle === 'maybeSingle') {
+          return { data: matched[0] ?? null, error: null };
+        }
+        return { data: matched, error: null };
+      }
       return { data: null, error: null };
     }
 
     // select
     const filtered = rows.filter((r) => isMatch(r, this.filters));
+    const ordered =
+      this.orderCol !== null
+        ? filtered.slice().sort((a, b) => {
+            const av = a[this.orderCol as string];
+            const bv = b[this.orderCol as string];
+            if (av === bv) return 0;
+            if (av === null || av === undefined) return 1;
+            if (bv === null || bv === undefined) return -1;
+            // String-safe compare; suficiente pros tipos usados (ISO datetime,
+            // UUID, números formatados como string).
+            const cmp = av < bv ? -1 : 1;
+            return this.orderAsc ? cmp : -cmp;
+          })
+        : filtered;
+    const limited = this.limitN !== null ? ordered.slice(0, this.limitN) : ordered;
     const projected =
       this.selectedCols === '*'
-        ? filtered
-        : filtered.map((r) => {
+        ? limited
+        : limited.map((r) => {
             const out: Record<string, unknown> = {};
             for (const c of this.selectedCols.split(',').map((s) => s.trim())) {
               out[c] = r[c];
