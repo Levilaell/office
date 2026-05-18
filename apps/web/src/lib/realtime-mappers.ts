@@ -1,6 +1,7 @@
 import type {
   Agent,
   Approval,
+  ChannelSessionRow,
   ConversationRow,
   Task,
 } from '@office/shared-domain';
@@ -9,6 +10,8 @@ import {
   isAgentState,
   isApprovalStatus,
   isAutonomyTier,
+  isChannelSessionStatus,
+  isChannelType,
   isConversationChannel,
   isConversationStatus,
   isDepartment,
@@ -18,6 +21,7 @@ import type {
   AgentSnapshot,
   AgentTier,
   ApprovalSnapshot,
+  ChannelSessionSnapshot,
   ConversationSnapshot,
   TaskSnapshot,
 } from './realtime-types';
@@ -105,6 +109,27 @@ export const toConversationSnapshot = (row: ConversationRow): ConversationSnapsh
     subject: row.subject,
     lastMessageAt: row.last_message_at,
     unreadCount: row.unread_count,
+  };
+};
+
+export const toChannelSessionSnapshot = (
+  row: ChannelSessionRow,
+): ChannelSessionSnapshot => {
+  if (!isChannelType(row.channel)) {
+    throw new Error(`invalid channel in session ${row.id}: ${row.channel}`);
+  }
+  if (!isChannelSessionStatus(row.status)) {
+    throw new Error(`invalid status in session ${row.id}: ${row.status}`);
+  }
+  return {
+    id: row.id,
+    channel: row.channel,
+    status: row.status,
+    identifier: row.identifier,
+    displayName: row.display_name,
+    lastHealthCheck: row.last_health_check,
+    lastMessageAt: row.last_message_at,
+    errorDetails: toRecordOrNull(row.error_details),
   };
 };
 

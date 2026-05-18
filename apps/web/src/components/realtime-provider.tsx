@@ -3,10 +3,11 @@
 import { useEffect, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { useAuth } from '@clerk/nextjs';
-import { isAgentState } from '@office/shared-types';
+import { isAgentState, isChannelSessionStatus } from '@office/shared-types';
 import { useRealtimeStore } from '@/lib/realtime-store';
 import type {
   ApprovalSnapshot,
+  ChannelSessionSnapshot,
   ConversationSnapshot,
   InitialSnapshot,
   TaskSnapshot,
@@ -40,6 +41,13 @@ const refetchConversations = async (): Promise<ConversationSnapshot[]> => {
   return body.conversations;
 };
 
+const refetchChannelSessions = async (): Promise<ChannelSessionSnapshot[]> => {
+  const r = await fetch('/api/atendimento/channels', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`channel sessions fetch failed: ${r.status}`);
+  const body = (await r.json()) as { channelSessions: ChannelSessionSnapshot[] };
+  return body.channelSessions;
+};
+
 export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const { isLoaded, isSignedIn, orgId, getToken } = useAuth();
   const socketRef = useRef<Socket | null>(null);
@@ -49,6 +57,10 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const replaceTasks = useRealtimeStore((s) => s.replaceTasks);
   const replaceApprovals = useRealtimeStore((s) => s.replaceApprovals);
   const replaceConversations = useRealtimeStore((s) => s.replaceConversations);
+  const replaceChannelSessions = useRealtimeStore((s) => s.replaceChannelSessions);
+  const updateChannelSessionStatus = useRealtimeStore(
+    (s) => s.updateChannelSessionStatus,
+  );
 
   // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
   useEffect(() => {
@@ -133,6 +145,20 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
       };
       socket.on('message.received', onMessageReceived);
 
+      // channel_session.status_changed: aplicação direta do delta (payload
+      // tem status novo). Refetch como fallback se status vier inválido.
+      socket.on('channel_session.status_changed', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as { sessionId?: unknown; status?: unknown };
+        if (typeof p.sessionId !== 'string' || !isChannelSessionStatus(p.status)) {
+          refetchChannelSessions()
+            .then(replaceChannelSessions)
+            .catch((err) => console.error('[realtime] refetch channel sessions', err));
+          return;
+        }
+        updateChannelSessionStatus(p.sessionId, p.status);
+      });
+
       socketRef.current = socket;
     })().catch((err) => {
       if (!cancelled) console.error('[realtime] handshake falhou', err);
@@ -158,6 +184,8 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     replaceTasks,
     replaceApprovals,
     replaceConversations,
+    replaceChannelSessions,
+    updateChannelSessionStatus,
   ]);
 
   return <>{children}</>;

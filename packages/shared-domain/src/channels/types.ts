@@ -6,67 +6,32 @@
 // O adapter NÃO conhece domínio de Atendimento. Só normaliza payload externo
 // e expõe envio. A virada pra `conversations` + `messages` vive em
 // `ingestNormalizedMessages` (ingest.ts), camada acima.
+//
+// Enums/guards (CHANNEL_TYPES, isChannelSessionStatus, ...) vivem em
+// `@office/shared-types`. Client bundle puxa só o necessário sem arrastar
+// shared-events/ioredis. Aqui ficam só as interfaces concretas que o adapter
+// usa.
 // =============================================================================
 
-import type { ConversationChannel } from '@office/shared-types';
+import type {
+  ChannelSessionStatus,
+  ChannelType,
+  MediaType,
+} from '@office/shared-types';
 
-// -----------------------------------------------------------------------------
-// ChannelType vs ConversationChannel
-//
-// ChannelType identifica adapter/provedor específico (`email_imap`,
-// `whatsapp_evolution`, `whatsapp_cloud`). É o que vive em
-// `channel_sessions.channel` e no `ChannelAdapter`.
-//
-// ConversationChannel é abstrato (`email`, `whatsapp`, `sms`) — vive em
-// `conversations.channel` e no `MessageReceivedPayload`. Permite migrar de
-// Evolution pra Cloud API sem refazer histórico.
-//
-// `channelTypeToConversationChannel` é o ponto de tradução único. O adapter
-// específico vai pra metadata da message, não pra coluna de conversation.
-// -----------------------------------------------------------------------------
-
-export const CHANNEL_TYPES = [
-  'simulated_webhook',
-  'email_imap',
-  'whatsapp_evolution',
-  'whatsapp_cloud',
-] as const;
-export type ChannelType = (typeof CHANNEL_TYPES)[number];
-export const isChannelType = (value: unknown): value is ChannelType =>
-  typeof value === 'string' && (CHANNEL_TYPES as readonly string[]).includes(value);
-
-export const channelTypeToConversationChannel = (
-  channel: ChannelType,
-): ConversationChannel => {
-  switch (channel) {
-    case 'simulated_webhook':
-      return 'simulated_webhook';
-    case 'email_imap':
-      return 'email';
-    case 'whatsapp_evolution':
-    case 'whatsapp_cloud':
-      return 'whatsapp';
-  }
-};
-
-// -----------------------------------------------------------------------------
-// MediaType — forward-looking. `messages` hoje só tem `content TEXT`; mediaType
-// vive em `metadata.media_type`. Quando coluna entrar (Fase 2+), o tipo está
-// pronto.
-// -----------------------------------------------------------------------------
-
-export const MEDIA_TYPES = [
-  'text',
-  'image',
-  'audio',
-  'document',
-  'video',
-  'location',
-  'system_event',
-] as const;
-export type MediaType = (typeof MEDIA_TYPES)[number];
-export const isMediaType = (value: unknown): value is MediaType =>
-  typeof value === 'string' && (MEDIA_TYPES as readonly string[]).includes(value);
+// Re-exports pra manter API estável pra quem importava daqui.
+export {
+  CHANNEL_TYPES,
+  CHANNEL_SESSION_STATUSES,
+  MEDIA_TYPES,
+  channelTypeToConversationChannel,
+  isChannelSessionStatus,
+  isChannelType,
+  isMediaType,
+  type ChannelSessionStatus,
+  type ChannelType,
+  type MediaType,
+} from '@office/shared-types';
 
 // -----------------------------------------------------------------------------
 // Estado de sessão exposto ao adapter
@@ -84,18 +49,6 @@ export type ChannelSession = {
   connectionMetadata: Record<string, unknown>;
   secretsRef: string | null;
 };
-
-export const CHANNEL_SESSION_STATUSES = [
-  'connected',
-  'disconnected',
-  'qr_pending',
-  'banned',
-  'error',
-] as const;
-export type ChannelSessionStatus = (typeof CHANNEL_SESSION_STATUSES)[number];
-export const isChannelSessionStatus = (value: unknown): value is ChannelSessionStatus =>
-  typeof value === 'string' &&
-  (CHANNEL_SESSION_STATUSES as readonly string[]).includes(value);
 
 export type ChannelHealth = {
   status: ChannelSessionStatus;

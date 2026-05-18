@@ -62,6 +62,7 @@ describe('realtime-store conversations', () => {
         conversation({ id: 'c1' }),
         conversation({ id: 'c2', status: 'open' }),
       ],
+      channelSessions: [],
     });
     expect(Object.keys(useRealtimeStore.getState().conversations)).toEqual(['c1', 'c2']);
     expect(useRealtimeStore.getState().hydrated).toBe(true);

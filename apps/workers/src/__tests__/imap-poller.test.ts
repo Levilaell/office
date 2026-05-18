@@ -39,18 +39,9 @@ vi.mock('mailparser', () => ({
 }));
 
 vi.mock('@office/shared-domain', () => ({
-  EmailAdapter: class FakeEmailAdapter {
-    buildImapConfig = mocks.buildImapConfigMock;
-    normalizeInbound = mocks.normalizeInboundMock;
-  },
-  getChannelAdapter: vi.fn().mockImplementation(async () => ({
-    buildImapConfig: mocks.buildImapConfigMock,
-    normalizeInbound: mocks.normalizeInboundMock,
-  })),
   getChannelSessionsByChannel: mocks.getChannelSessionsByChannelMock,
   updateChannelSessionStatus: mocks.updateChannelSessionStatusMock,
   ingestNormalizedMessages: mocks.ingestNormalizedMessagesMock,
-  parseEmailConnectionMetadata: (raw: Record<string, unknown>) => raw,
   toChannelSession: (row: Record<string, unknown>) => ({
     id: row.id,
     tenantId: row.tenant_id,
@@ -59,6 +50,21 @@ vi.mock('@office/shared-domain', () => ({
     connectionMetadata: row.connection_metadata,
     secretsRef: row.secrets_ref,
   }),
+}));
+
+vi.mock('@office/shared-domain/channels/registry', () => ({
+  getChannelAdapter: vi.fn().mockImplementation(async () => ({
+    buildImapConfig: mocks.buildImapConfigMock,
+    normalizeInbound: mocks.normalizeInboundMock,
+  })),
+}));
+
+vi.mock('@office/shared-domain/channels/adapters/email', () => ({
+  EmailAdapter: class FakeEmailAdapter {
+    buildImapConfig = mocks.buildImapConfigMock;
+    normalizeInbound = mocks.normalizeInboundMock;
+  },
+  parseEmailConnectionMetadata: (raw: Record<string, unknown>) => raw,
 }));
 
 const {

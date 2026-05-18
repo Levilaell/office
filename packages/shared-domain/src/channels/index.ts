@@ -18,8 +18,6 @@ export {
   type SendResult,
 } from './types';
 
-export { getChannelAdapter } from './registry';
-
 export {
   ingestNormalizedMessages,
   type IngestNormalizedMessagesInput,
@@ -28,14 +26,19 @@ export {
 
 export { resolveSecretRef } from './secrets';
 
-export {
-  EmailAdapter,
-  EmailConnectionMetadataSchema,
-  parseEmailConnectionMetadata,
-  type EmailConnectionMetadata,
-} from './adapters/email';
-
-export { SimulatedWebhookAdapter } from './adapters/simulated';
+// `getChannelAdapter` e adapters concretos NÃO são re-exportados aqui de
+// propósito.
+//
+// Cliente Next.js (realtime-provider, mappers) importa `@office/shared-domain`
+// pra type guards (isChannelType, isChannelSessionStatus). Se reexportarmos
+// registry/adapters aqui, o webpack — mesmo com import() dinâmico — segue o
+// grafo e puxa imapflow → módulos Node-only (tls/net/fs) pro bundle do
+// client.
+//
+// Server-side (worker, API routes, agent-runtime) importa via subpath:
+//   import { getChannelAdapter } from '@office/shared-domain/channels/registry';
+//   import { EmailAdapter } from '@office/shared-domain/channels/adapters/email';
+// O `exports` field em package.json formaliza esses paths.
 
 export {
   getActiveChannelSessionsForTenant,

@@ -57,6 +57,7 @@ const resetStore = () => {
     tasks: {},
     approvals: {},
     conversations: {},
+    channelSessions: {},
     hydrated: false,
     socketConnected: false,
   });
@@ -71,6 +72,7 @@ describe('realtime-store', () => {
       tasks: [task({ id: 't1' }), task({ id: 't2' })],
       approvals: [approval({ id: 'ap1' })],
       conversations: [],
+      channelSessions: [],
     };
 
     useRealtimeStore.getState().hydrate(snap);

@@ -4,6 +4,7 @@ import type { AgentState, Department } from '@office/shared-types';
 import type {
   AgentSnapshot,
   ApprovalSnapshot,
+  ChannelSessionSnapshot,
   ConversationSnapshot,
   InitialSnapshot,
   TaskSnapshot,
@@ -14,6 +15,7 @@ export type RealtimeState = {
   tasks: Record<string, TaskSnapshot>;
   approvals: Record<string, ApprovalSnapshot>;
   conversations: Record<string, ConversationSnapshot>;
+  channelSessions: Record<string, ChannelSessionSnapshot>;
   hydrated: boolean;
   socketConnected: boolean;
 
@@ -33,6 +35,11 @@ export type RealtimeState = {
   removeApproval: (id: string) => void;
   upsertConversation: (snap: ConversationSnapshot) => void;
   replaceConversations: (snaps: ConversationSnapshot[]) => void;
+  replaceChannelSessions: (snaps: ChannelSessionSnapshot[]) => void;
+  updateChannelSessionStatus: (
+    id: string,
+    status: ChannelSessionSnapshot['status'],
+  ) => void;
 };
 
 const indexById = <T extends { id: string }>(items: T[]): Record<string, T> => {
@@ -46,6 +53,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
   tasks: {},
   approvals: {},
   conversations: {},
+  channelSessions: {},
   hydrated: false,
   socketConnected: false,
 
@@ -55,6 +63,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       tasks: indexById(snapshot.tasks),
       approvals: indexById(snapshot.approvals),
       conversations: indexById(snapshot.conversations),
+      channelSessions: indexById(snapshot.channelSessions),
       hydrated: true,
     }),
 
@@ -100,6 +109,20 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
     set((cur) => ({ conversations: { ...cur.conversations, [snap.id]: snap } })),
 
   replaceConversations: (snaps) => set({ conversations: indexById(snaps) }),
+
+  replaceChannelSessions: (snaps) => set({ channelSessions: indexById(snaps) }),
+
+  updateChannelSessionStatus: (id, status) =>
+    set((cur) => {
+      const existing = cur.channelSessions[id];
+      if (!existing) return cur;
+      return {
+        channelSessions: {
+          ...cur.channelSessions,
+          [id]: { ...existing, status },
+        },
+      };
+    }),
 }));
 
 // -----------------------------------------------------------------------------
@@ -172,6 +195,15 @@ export const useConversation = (
   id: string | null | undefined,
 ): ConversationSnapshot | null =>
   useRealtimeStore((s) => (id ? (s.conversations[id] ?? null) : null));
+
+export const useChannelSessions = (): ChannelSessionSnapshot[] =>
+  useRealtimeStore(
+    useShallow((s) => {
+      const all = Object.values(s.channelSessions);
+      all.sort((a, b) => (a.channel < b.channel ? -1 : a.channel > b.channel ? 1 : 0));
+      return all;
+    }),
+  );
 
 export const useHydrated = (): boolean => useRealtimeStore((s) => s.hydrated);
 export const useSocketConnected = (): boolean =>

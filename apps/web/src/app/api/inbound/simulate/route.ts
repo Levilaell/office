@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  getChannelAdapter,
   getTenantByClerkOrgId,
   ingestNormalizedMessages,
 } from '@office/shared-domain';
+// Server-only subpath: registry static-imports adapters; reexportar pelo index
+// puxaria imapflow pro client bundle do Next.
+import { getChannelAdapter } from '@office/shared-domain/channels/registry';
 import { getCurrentAuthContext } from '@/lib/auth';
 import { getServiceRoleSupabase } from '@/lib/supabase';
 

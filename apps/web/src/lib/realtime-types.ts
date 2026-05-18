@@ -3,6 +3,8 @@ import type {
   AgentState,
   ApprovalStatus,
   AutonomyTier,
+  ChannelSessionStatus,
+  ChannelType,
   ConversationChannel,
   ConversationStatus,
   Department,
@@ -63,11 +65,23 @@ export type ConversationSnapshot = {
   unreadCount: number;
 };
 
+export type ChannelSessionSnapshot = {
+  id: string;
+  channel: ChannelType;
+  status: ChannelSessionStatus;
+  identifier: string | null;
+  displayName: string | null;
+  lastHealthCheck: string | null;
+  lastMessageAt: string | null;
+  errorDetails: Record<string, unknown> | null;
+};
+
 export type InitialSnapshot = {
   agents: AgentSnapshot[];
   tasks: TaskSnapshot[];
   approvals: ApprovalSnapshot[];
   conversations: ConversationSnapshot[];
+  channelSessions: ChannelSessionSnapshot[];
 };
 
 export type AgentRunSnapshot = {

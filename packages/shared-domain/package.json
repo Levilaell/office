@@ -6,7 +6,10 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./channels/registry": "./src/channels/registry.ts",
+    "./channels/adapters/email": "./src/channels/adapters/email.ts",
+    "./channels/adapters/simulated": "./src/channels/adapters/simulated.ts"
   },
   "scripts": {
     "lint": "eslint src",

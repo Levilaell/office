@@ -17,16 +17,20 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser, type ParsedMail } from 'mailparser';
 import {
-  EmailAdapter,
-  getChannelAdapter,
   getChannelSessionsByChannel,
   ingestNormalizedMessages,
-  parseEmailConnectionMetadata,
   toChannelSession,
   updateChannelSessionStatus,
   type ChannelSessionRow,
   type ServiceRoleClient,
 } from '@office/shared-domain';
+// Server-only: subpath exports do package. Re-exportar pelo index puxaria
+// imapflow pro client bundle do Next via realtime-provider.
+import { getChannelAdapter } from '@office/shared-domain/channels/registry';
+import {
+  EmailAdapter,
+  parseEmailConnectionMetadata,
+} from '@office/shared-domain/channels/adapters/email';
 
 export type PollerConfig = {
   supabase: ServiceRoleClient;
