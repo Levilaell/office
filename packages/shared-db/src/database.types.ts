@@ -612,6 +612,110 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          account_id: string
+          category: string
+          competencia: string | null
+          created_at: string
+          description: string | null
+          entity_id: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          metadata: Json
+          mime_type: string | null
+          notes: string | null
+          processed_at: string | null
+          received_at: string | null
+          reference_date: string | null
+          source: string | null
+          source_message_id: string | null
+          status: string
+          storage_path: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          category: string
+          competencia?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          received_at?: string | null
+          reference_date?: string | null
+          source?: string | null
+          source_message_id?: string | null
+          status?: string
+          storage_path?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          category?: string
+          competencia?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          metadata?: Json
+          mime_type?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          received_at?: string | null
+          reference_date?: string | null
+          source?: string | null
+          source_message_id?: string | null
+          status?: string
+          storage_path?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entities: {
         Row: {
           account_id: string
@@ -656,6 +760,119 @@ export type Database = {
           },
           {
             foreignKeyName: "entities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_drafts: {
+        Row: {
+          agent_id: string
+          agent_run_id: string | null
+          confidence: number | null
+          content_type: string
+          conversation_id: string
+          created_at: string
+          edit_diff: Json | null
+          expires_at: string | null
+          final_message_id: string | null
+          id: string
+          proposed_content: string
+          reasoning: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          source_message_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          agent_run_id?: string | null
+          confidence?: number | null
+          content_type?: string
+          conversation_id: string
+          created_at?: string
+          edit_diff?: Json | null
+          expires_at?: string | null
+          final_message_id?: string | null
+          id?: string
+          proposed_content: string
+          reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_message_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_run_id?: string | null
+          confidence?: number | null
+          content_type?: string
+          conversation_id?: string
+          created_at?: string
+          edit_diff?: Json | null
+          expires_at?: string | null
+          final_message_id?: string | null
+          id?: string
+          proposed_content?: string
+          reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_message_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_drafts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_agent_run_id_fkey"
+            columns: ["agent_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_final_message_id_fkey"
+            columns: ["final_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -717,6 +934,100 @@ export type Database = {
           },
           {
             foreignKeyName: "messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obligations: {
+        Row: {
+          account_id: string
+          amount: number | null
+          amount_paid: number | null
+          category: string
+          competencia: string
+          created_at: string
+          description: string | null
+          due_date: string
+          entity_id: string | null
+          id: string
+          metadata: Json
+          notes: string | null
+          paid_at: string | null
+          payment_code: string | null
+          payment_link: string | null
+          payment_method: string | null
+          reference_period: unknown | null
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount?: number | null
+          amount_paid?: number | null
+          category: string
+          competencia: string
+          created_at?: string
+          description?: string | null
+          due_date: string
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payment_code?: string | null
+          payment_link?: string | null
+          payment_method?: string | null
+          reference_period?: unknown | null
+          status?: string
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number | null
+          amount_paid?: number | null
+          category?: string
+          competencia?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          entity_id?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payment_code?: string | null
+          payment_link?: string | null
+          payment_method?: string | null
+          reference_period?: unknown | null
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

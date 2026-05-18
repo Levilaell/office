@@ -2,8 +2,9 @@
 // Registry de templates de mensagem do Atendimento
 //
 // Sprint 1.2: 6 templates necessários pro Coordenador (T02, T_THANKS, T_BYE,
-// T04, T05, T13). Outros (T01, T03, T06-T12) ficam como TD — Coordenador
-// não precisa deles enquanto Especialistas não estão online.
+// T04, T05, T13).
+// Sprint 1.3: 4 templates adicionados pro Especialista Operacional (T03,
+// T06, T07, T_NO_DATA). Demais (T01, T08-T12) só quando virarem necessários.
 //
 // `renderTemplate` faz substituição posicional `{{var}}` → valor. Validação
 // de obrigatórias acontece antes da substituição: se variável obrigatória
@@ -15,17 +16,25 @@ import type { MessageTemplate, TemplateVariables } from './types';
 import { T02_SAUDACAO } from './t02-saudacao';
 import { T_THANKS } from './t-thanks';
 import { T_BYE } from './t-bye';
+import { T03_DOC_RECEBIDO } from './t03-doc-recebido';
 import { T04_VOU_VERIFICAR } from './t04-vou-verificar';
 import { T05_ESCALACAO } from './t05-escalacao';
+import { T06_STATUS_OBRIGACAO } from './t06-status-obrigacao';
+import { T07_DOC_PENDENTE } from './t07-doc-pendente';
 import { T13_FORA_HORARIO } from './t13-fora-horario';
+import { T_NO_DATA } from './t-no-data';
 
 export const ATENDIMENTO_TEMPLATES = [
   T02_SAUDACAO,
   T_THANKS,
   T_BYE,
+  T03_DOC_RECEBIDO,
   T04_VOU_VERIFICAR,
   T05_ESCALACAO,
+  T06_STATUS_OBRIGACAO,
+  T07_DOC_PENDENTE,
   T13_FORA_HORARIO,
+  T_NO_DATA,
 ] as const satisfies ReadonlyArray<MessageTemplate>;
 
 export type AtendimentoTemplateId = (typeof ATENDIMENTO_TEMPLATES)[number]['id'];
