@@ -11,6 +11,7 @@ Arquivos nesta pasta definem regras detalhadas por tema. CLAUDE.md raiz referenc
 - `llm-prompts.md` — estrutura padrão de prompts, versionamento, restrições
 - `testing.md` — pirâmide de testes, mocking de LLM, eval contínuo
 - `contabilidade-brasileira.md` — conhecimento de domínio essencial
+- `pr-policy.md` — política de PR vs commit direto em main
 
 ## Quando criar nova regra
 

@@ -38,7 +38,7 @@ Toda tabela de domínio carrega `tenant_id`. RLS obrigatório.
 - Lógica de domínio em `packages/shared-domain`; nunca dentro de API route.
 - Sem chamada direta de LLM em React — sempre via serviço de agentes.
 - Erros sempre logados com `trace_id` e contexto; nunca silenciados.
-- `pnpm lint` e `pnpm test` passam antes de commit. Sem commit em `main` — sempre PR.
+- `pnpm lint` e `pnpm test` passam antes de commit.
 
 ## Regras de agentes
 
@@ -62,6 +62,24 @@ Toda tabela de domínio carrega `tenant_id`. RLS obrigatório.
 - `audit_log` é INSERT-only. Sem policy de UPDATE ou DELETE.
 - Logs estruturados em JSON com `trace_id` propagado em toda chamada.
 - Falha em logar = falha da operação (não silenciar pra continuar).
+
+## Política de PR vs commit direto
+
+**Default: PR obrigatório.** Não fazer commits direto em `main` exceto nos casos abaixo.
+
+**Commit direto em `main` permitido APENAS quando todas as condições forem satisfeitas:**
+1. Mudança mecânica e óbvia (< 30 linhas, lógica trivial)
+2. Erro de implementação seria visível em segundos (build/lint/test quebra na hora)
+3. Não toca: schema, migrations, multi-tenancy, auth, RLS, audit, wrapper LLM, prompts, agentes, CI, deps grandes
+4. `pnpm typecheck && pnpm lint && pnpm test && pnpm build` rodados local e verdes ANTES do push
+
+**Casos típicos:** fix de typo, fix de import path / extensão, fix de lint trivial, atualização de doc/comentário sem mudança de código, fix de config óbvia (env var faltando).
+
+**Em qualquer dúvida, vai PR.** A regra existe pra preservar gate de revisão em mudanças não-triviais, não pra criar fricção em hotfix de 5 minutos.
+
+**Mesmo em commit direto, CI tem que passar.** Não é "skipa tudo", é "skipa o PR review".
+
+Detalhes em `.claude/rules/pr-policy.md`.
 
 ## Estrutura do monorepo
 
@@ -111,7 +129,6 @@ Cada `apps/*` pode ter CLAUDE.md local com contexto específico que sobrescreve 
 - `any` sem comentário justificando
 - Lógica de domínio em API route
 - Nova dependência grande sem ADR
-- Commit direto em `main`
 - Decidir arquitetura sozinho — escalar (ver seção abaixo)
 
 ## Quando pausar e perguntar
