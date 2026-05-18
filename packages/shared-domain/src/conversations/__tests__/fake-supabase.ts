@@ -31,11 +31,78 @@ const DEFAULTS_BY_TABLE: Record<string, Record<string, unknown>> = {
   messages: {
     metadata: {},
   },
+  // Sprint 1.3 — message_drafts. Defaults espelham o schema.
+  message_drafts: {
+    status: 'pending',
+    content_type: 'text',
+    confidence: null,
+    reasoning: null,
+    edit_diff: null,
+    expires_at: null,
+    final_message_id: null,
+    resolved_by: null,
+    resolved_at: null,
+    agent_run_id: null,
+    source_message_id: null,
+  },
+  // Sprint 1.3 — obligations e documents também precisam de defaults
+  // mínimos pra testes de tools.
+  obligations: {
+    status: 'pending',
+    metadata: {},
+    amount: null,
+    amount_paid: null,
+    paid_at: null,
+    description: null,
+    reference_period: null,
+    payment_method: null,
+    payment_link: null,
+    payment_code: null,
+    notes: null,
+    entity_id: null,
+  },
+  documents: {
+    status: 'pending',
+    metadata: {},
+    competencia: null,
+    reference_date: null,
+    received_at: null,
+    processed_at: null,
+    storage_path: null,
+    file_name: null,
+    file_size: null,
+    mime_type: null,
+    source: null,
+    source_message_id: null,
+    notes: null,
+    description: null,
+    entity_id: null,
+  },
 };
 
-const isMatch = (row: Row, filters: Array<[string, unknown]>): boolean => {
-  for (const [col, val] of filters) {
-    if (row[col] !== val) return false;
+// Sprint 1.3 — filtros estendidos pra suportar `gte`, `lte`, `in` usados
+// pelas tools do Especialista Operacional.
+type Filter =
+  | { op: 'eq'; col: string; val: unknown }
+  | { op: 'gte'; col: string; val: unknown }
+  | { op: 'lte'; col: string; val: unknown }
+  | { op: 'in'; col: string; values: unknown[] };
+
+const isMatch = (row: Row, filters: Filter[]): boolean => {
+  for (const f of filters) {
+    const cell = row[f.col];
+    if (f.op === 'eq') {
+      if (cell !== f.val) return false;
+    } else if (f.op === 'gte') {
+      if (cell === null || cell === undefined) return false;
+      // String compare seguro pra ISO dates e UUIDs.
+      if ((cell as never) < (f.val as never)) return false;
+    } else if (f.op === 'lte') {
+      if (cell === null || cell === undefined) return false;
+      if ((cell as never) > (f.val as never)) return false;
+    } else if (f.op === 'in') {
+      if (!f.values.includes(cell)) return false;
+    }
   }
   return true;
 };
@@ -54,7 +121,7 @@ export class FakeSupabase {
   };
   // Permite verificar chamadas em testes.
   inserts: Array<{ table: string; row: Record<string, unknown> }> = [];
-  updates: Array<{ table: string; patch: Record<string, unknown>; filters: Array<[string, unknown]> }> = [];
+  updates: Array<{ table: string; patch: Record<string, unknown>; filters: Filter[] }> = [];
 
   from(table: string): FakeQuery {
     if (!this.tables[table]) this.tables[table] = [];
@@ -64,15 +131,16 @@ export class FakeSupabase {
 
 type Mode = 'select' | 'insert' | 'update' | 'delete';
 
+type OrderClause = { col: string; ascending: boolean };
+
 export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseError | null }> {
   private mode: Mode = 'select';
   private selectedCols: string = '*';
-  private filters: Array<[string, unknown]> = [];
+  private filters: Filter[] = [];
   private insertRow: Record<string, unknown> | null = null;
   private updatePatch: Record<string, unknown> | null = null;
   private wantSingle: 'single' | 'maybeSingle' | null = null;
-  private orderCol: string | null = null;
-  private orderAsc: boolean = true;
+  private orders: OrderClause[] = [];
   private limitN: number | null = null;
   private selectAfterMutation: boolean = false;
 
@@ -102,13 +170,27 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
   }
 
   eq(col: string, val: unknown): FakeQuery {
-    this.filters.push([col, val]);
+    this.filters.push({ op: 'eq', col, val });
+    return this;
+  }
+
+  gte(col: string, val: unknown): FakeQuery {
+    this.filters.push({ op: 'gte', col, val });
+    return this;
+  }
+
+  lte(col: string, val: unknown): FakeQuery {
+    this.filters.push({ op: 'lte', col, val });
+    return this;
+  }
+
+  in(col: string, values: unknown[]): FakeQuery {
+    this.filters.push({ op: 'in', col, values });
     return this;
   }
 
   order(col: string, opts?: { ascending?: boolean; nullsFirst?: boolean }): FakeQuery {
-    this.orderCol = col;
-    this.orderAsc = opts?.ascending !== false;
+    this.orders.push({ col, ascending: opts?.ascending !== false });
     return this;
   }
 
@@ -150,7 +232,10 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
           return { data: null, error: { code: '23505', message: 'unique violation' } };
         }
       }
-      const id = (this.insertRow.id as string) ?? `id-${rows.length + 1}-${this.table}`;
+      // Random hex pra id default — evita colisão quando múltiplas tabelas
+      // têm row count similar (audit_log + message_drafts em paralelo).
+      const idCounter = `${rows.length + 1}-${Math.floor(Math.random() * 1e9).toString(16)}`;
+      const id = (this.insertRow.id as string) ?? `id-${idCounter}-${this.table}`;
       const created_at = (this.insertRow.created_at as string) ?? new Date().toISOString();
       const updated_at = (this.insertRow.updated_at as string) ?? created_at;
       const defaults = DEFAULTS_BY_TABLE[this.table] ?? {};
@@ -195,20 +280,21 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
 
     // select
     const filtered = rows.filter((r) => isMatch(r, this.filters));
-    const ordered =
-      this.orderCol !== null
-        ? filtered.slice().sort((a, b) => {
-            const av = a[this.orderCol as string];
-            const bv = b[this.orderCol as string];
-            if (av === bv) return 0;
+    const ordered = this.orders.length === 0
+      ? filtered
+      : filtered.slice().sort((a, b) => {
+          for (const { col, ascending } of this.orders) {
+            const av = a[col];
+            const bv = b[col];
+            if (av === bv) continue;
             if (av === null || av === undefined) return 1;
             if (bv === null || bv === undefined) return -1;
-            // String-safe compare; suficiente pros tipos usados (ISO datetime,
-            // UUID, números formatados como string).
             const cmp = av < bv ? -1 : 1;
-            return this.orderAsc ? cmp : -cmp;
-          })
-        : filtered;
+            const dir = ascending ? cmp : -cmp;
+            if (dir !== 0) return dir;
+          }
+          return 0;
+        });
     const limited = this.limitN !== null ? ordered.slice(0, this.limitN) : ordered;
     const projected =
       this.selectedCols === '*'
