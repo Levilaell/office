@@ -24,3 +24,7 @@ export const examplePrompt: PromptDefinition = {
 };
 
 export { routerPrompt } from './router.js';
+export {
+  coordenadorAtendimentoPrompt,
+  type CoordenadorPromptInput,
+} from './atendimento/coordenador.js';

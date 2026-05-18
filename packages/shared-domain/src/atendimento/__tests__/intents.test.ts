@@ -54,7 +54,11 @@ describe('ATENDIMENTO_INTENTS catalog', () => {
     // Importa lazy pra não cruzar dependência circular no nível do módulo.
     const { ATENDIMENTO_TEMPLATES } = await import('../templates/index');
     const templateIds = new Set(ATENDIMENTO_TEMPLATES.map((t) => t.id));
-    for (const intent of ATENDIMENTO_INTENTS) {
+    // Cast pra forma "wider": const `as const satisfies` narra cada item ao
+    // literal exato (alguns sem `template`); o teste só quer validar a
+    // referência quando ela existe.
+    type Wide = { template?: string };
+    for (const intent of ATENDIMENTO_INTENTS as ReadonlyArray<Wide>) {
       if (intent.template) {
         expect(templateIds.has(intent.template)).toBe(true);
       }
