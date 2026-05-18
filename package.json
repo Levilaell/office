@@ -22,7 +22,8 @@
     "db:types": "supabase gen types typescript --local > packages/shared-db/src/database.types.ts",
     "db:diff": "supabase db diff",
     "seed:agents": "tsx scripts/seed-existing-tenants.ts",
-    "seed:email-channel": "tsx scripts/seed-email-channel.ts"
+    "seed:email-channel": "tsx scripts/seed-email-channel.ts",
+    "seed:atendimento-test-data": "tsx scripts/seed-atendimento-test-data.ts"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.66.0",
