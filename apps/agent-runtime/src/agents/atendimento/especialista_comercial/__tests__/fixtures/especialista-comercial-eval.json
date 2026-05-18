@@ -1,0 +1,395 @@
+{
+  "entries": [
+    {
+      "id": "novo-1-saudacao-generica",
+      "category": "novo",
+      "lead": null,
+      "currentMessage": "Oi, queria saber sobre os serviços de vocês",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Que ótimo ter você por aqui! Pra te ajudar melhor, qual seu nome?\",\"extracted_slots\":{},\"next_target_slot\":\"contact_name\",\"confidence\":0.92,\"reasoning\":\"primeiro turno, pergunto nome\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedNextSlot": "contact_name",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "novo-2-precisa-contador",
+      "category": "novo",
+      "lead": null,
+      "currentMessage": "Preciso de um contador",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Posso te ajudar! Qual seu nome?\",\"extracted_slots\":{},\"next_target_slot\":\"contact_name\",\"confidence\":0.9,\"reasoning\":\"sem identificação ainda\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedNextSlot": "contact_name",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "novo-3-instagram",
+      "category": "novo",
+      "lead": null,
+      "currentMessage": "Vi seu Instagram, queria conhecer melhor",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Que bom! Qual seu nome?\",\"extracted_slots\":{\"referrer\":\"Instagram\"},\"next_target_slot\":\"contact_name\",\"confidence\":0.88,\"reasoning\":\"capturei referrer\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedNextSlot": "contact_name",
+      "expectedExtractedSlots": { "referrer": "Instagram" }
+    },
+    {
+      "id": "novo-4-abrir-empresa",
+      "category": "novo",
+      "lead": null,
+      "currentMessage": "Bom dia, tenho dúvida sobre abrir empresa",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Bom dia! Posso ajudar. Qual seu nome?\",\"extracted_slots\":{\"has_existing_company\":false},\"next_target_slot\":\"contact_name\",\"confidence\":0.9,\"reasoning\":\"cliente indica que vai abrir\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": { "has_existing_company": false }
+    },
+    {
+      "id": "novo-5-pergunta-mei",
+      "category": "novo",
+      "lead": null,
+      "currentMessage": "Vocês fazem MEI?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Sim, atendemos MEI. Pra te orientar direito, qual seu nome?\",\"extracted_slots\":{},\"next_target_slot\":\"contact_name\",\"confidence\":0.85,\"reasoning\":\"responde breve e volta ao slot\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "meio-1-tem-padaria",
+      "category": "meio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "João" }
+      },
+      "currentMessage": "Tenho uma padaria",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Que legal, padaria! A empresa tem quantos funcionários ou qual o faturamento mensal aproximado?\",\"extracted_slots\":{\"has_existing_company\":true,\"industry_segment\":\"padaria\"},\"next_target_slot\":\"company_size_estimate\",\"confidence\":0.9,\"reasoning\":\"capturei empresa + segmento\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": { "has_existing_company": true, "industry_segment": "padaria" }
+    },
+    {
+      "id": "meio-2-cinco-funcionarios",
+      "category": "meio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "João",
+          "has_existing_company": true
+        }
+      },
+      "currentMessage": "uns 5 funcionários",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Beleza! Você sabe qual o regime tributário hoje? (Simples Nacional, Lucro Presumido, Lucro Real ou MEI)\",\"extracted_slots\":{\"company_size_estimate\":\"small\"},\"next_target_slot\":\"current_regime\",\"confidence\":0.92,\"reasoning\":\"5 func = small\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": { "company_size_estimate": "small" }
+    },
+    {
+      "id": "meio-3-simples-nacional",
+      "category": "meio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "João",
+          "has_existing_company": true,
+          "company_size_estimate": "small"
+        }
+      },
+      "currentMessage": "Simples Nacional",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Beleza. O que te motivou a procurar um escritório de contabilidade agora? Qual a principal dor?\",\"extracted_slots\":{\"current_regime\":\"simples_nacional\"},\"next_target_slot\":\"main_pain\",\"confidence\":0.95,\"reasoning\":\"regime claro\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": { "current_regime": "simples_nacional" }
+    },
+    {
+      "id": "meio-4-essa-semana",
+      "category": "meio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "João",
+          "has_existing_company": true,
+          "company_size_estimate": "small",
+          "current_regime": "simples_nacional",
+          "main_pain": "meu contador atual não responde mais"
+        }
+      },
+      "currentMessage": "Preciso resolver essa semana",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"mark_qualified\",\"content\":\"Perfeito, João! Vou agendar conversa com o time comercial.\",\"extracted_slots\":{\"decision_timeline\":\"urgent\"},\"confidence\":0.95,\"reasoning\":\"último slot preenchido, fecha qualificação\"}",
+      "expectedAction": "mark_qualified",
+      "expectedExtractedSlots": { "decision_timeline": "urgent" }
+    },
+    {
+      "id": "meio-5-nao-sei-regime",
+      "category": "meio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "Maria",
+          "has_existing_company": true,
+          "company_size_estimate": "medium"
+        }
+      },
+      "currentMessage": "não sei o regime, deixo isso com o contador",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Beleza, sem problema. O que te motivou a procurar contabilidade nova?\",\"extracted_slots\":{\"current_regime\":\"unknown\"},\"next_target_slot\":\"main_pain\",\"confidence\":0.85,\"reasoning\":\"cliente não sabe, registro unknown\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": { "current_regime": "unknown" }
+    },
+    {
+      "id": "multi-1-tudo-de-uma-vez",
+      "category": "multi-slot",
+      "lead": null,
+      "currentMessage": "Sou João, tenho uma padaria com uns 8 funcionários, é urgente",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Beleza, João! Padaria. Você sabe qual o regime tributário hoje?\",\"extracted_slots\":{\"contact_name\":\"João\",\"has_existing_company\":true,\"industry_segment\":\"padaria\",\"company_size_estimate\":\"small\",\"decision_timeline\":\"urgent\"},\"next_target_slot\":\"current_regime\",\"confidence\":0.9,\"reasoning\":\"extraí 5 slots de uma mensagem\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": {
+        "contact_name": "João",
+        "has_existing_company": true,
+        "industry_segment": "padaria",
+        "company_size_estimate": "small",
+        "decision_timeline": "urgent"
+      }
+    },
+    {
+      "id": "multi-2-mei-este-mes",
+      "category": "multi-slot",
+      "lead": null,
+      "currentMessage": "Marcelo, vou abrir empresa este mês, vai ser MEI",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Boa, Marcelo! Pra abertura MEI estamos prontos. O que te motivou agora?\",\"extracted_slots\":{\"contact_name\":\"Marcelo\",\"has_existing_company\":false,\"company_size_estimate\":\"mei\",\"decision_timeline\":\"this_month\"},\"next_target_slot\":\"main_pain\",\"confidence\":0.92,\"reasoning\":\"abertura MEI imediata\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": {
+        "contact_name": "Marcelo",
+        "has_existing_company": false,
+        "company_size_estimate": "mei",
+        "decision_timeline": "this_month"
+      }
+    },
+    {
+      "id": "multi-3-comercio-medio",
+      "category": "multi-slot",
+      "lead": null,
+      "currentMessage": "Maria, tenho comércio no Lucro Presumido, faturo uns R$ 200.000 por mês, sem pressa",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"acknowledge_then_ask\",\"content\":\"Maria, ótimo. Pra fechar a qualificação: o que te motivou a procurar contabilidade agora?\",\"extracted_slots\":{\"contact_name\":\"Maria\",\"has_existing_company\":true,\"current_regime\":\"lucro_presumido\",\"industry_segment\":\"comércio\",\"monthly_revenue_estimate\":200000,\"decision_timeline\":\"no_rush\"},\"next_target_slot\":\"main_pain\",\"confidence\":0.93,\"reasoning\":\"extraí 6 slots\"}",
+      "expectedAction": "acknowledge_then_ask",
+      "expectedExtractedSlots": {
+        "contact_name": "Maria",
+        "has_existing_company": true,
+        "current_regime": "lucro_presumido",
+        "industry_segment": "comércio",
+        "monthly_revenue_estimate": 200000,
+        "decision_timeline": "no_rush"
+      }
+    },
+    {
+      "id": "desvio-1-quanto-custa",
+      "category": "desvio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "João" }
+      },
+      "currentMessage": "Antes, quanto custa?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"O valor varia conforme regime e porte — o time comercial te explica direito depois. Pra te orientar melhor: você já tem empresa ou está pensando em abrir?\",\"extracted_slots\":{},\"next_target_slot\":\"has_existing_company\",\"confidence\":0.85,\"reasoning\":\"responde breve, volta pro slot\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "desvio-2-atendem-mei",
+      "category": "desvio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "Pedro" }
+      },
+      "currentMessage": "Vocês atendem MEI?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Atendemos sim. Você é MEI, vai abrir ou tem outro tipo de empresa?\",\"extracted_slots\":{},\"next_target_slot\":\"has_existing_company\",\"confidence\":0.85,\"reasoning\":\"responde sim e volta pro slot\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "desvio-3-onde-fica",
+      "category": "desvio",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "Ana", "has_existing_company": true }
+      },
+      "currentMessage": "Onde fica o escritório?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Atendemos online no Brasil todo. Pra entender o porte da empresa: quantos funcionários ou qual o faturamento?\",\"extracted_slots\":{},\"next_target_slot\":\"company_size_estimate\",\"confidence\":0.82,\"reasoning\":\"responde breve, volta\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "humano-1-pede-direto",
+      "category": "pede_humano",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "Lucas" }
+      },
+      "currentMessage": "Não quero responder pesquisa, quero falar com humano",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"request_human_handoff\",\"content\":\"Claro! Vou pedir pra alguém da equipe te chamar.\",\"extracted_slots\":{},\"confidence\":0.95,\"reasoning\":\"cliente pediu humano explicitamente\"}",
+      "expectedAction": "request_human_handoff",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "humano-2-pessoa",
+      "category": "pede_humano",
+      "lead": null,
+      "currentMessage": "Vocês têm WhatsApp pra falar com pessoa de verdade?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"request_human_handoff\",\"content\":\"Claro, vou conectar você com alguém da equipe.\",\"extracted_slots\":{},\"confidence\":0.9,\"reasoning\":\"quer humano\"}",
+      "expectedAction": "request_human_handoff",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "humano-3-sem-tempo",
+      "category": "pede_humano",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": { "contact_name": "Roberto", "has_existing_company": true }
+      },
+      "currentMessage": "To sem tempo agora, alguém me liga depois?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"request_human_handoff\",\"content\":\"Tudo bem! A equipe te retorna em breve.\",\"extracted_slots\":{},\"confidence\":0.9,\"reasoning\":\"cliente sem tempo, escala\"}",
+      "expectedAction": "request_human_handoff",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "fecha-1-ultimo-slot",
+      "category": "fechamento",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "Carla",
+          "has_existing_company": true,
+          "company_size_estimate": "small",
+          "current_regime": "simples_nacional",
+          "main_pain": "quero trocar de contador"
+        }
+      },
+      "currentMessage": "Este mês mesmo",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"mark_qualified\",\"content\":\"Perfeito, Carla! Vou agendar com o comercial.\",\"extracted_slots\":{\"decision_timeline\":\"this_month\"},\"confidence\":0.95,\"reasoning\":\"último slot, qualifica\"}",
+      "expectedAction": "mark_qualified",
+      "expectedExtractedSlots": { "decision_timeline": "this_month" }
+    },
+    {
+      "id": "fecha-2-llm-acerta",
+      "category": "fechamento",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "Felipe",
+          "has_existing_company": false,
+          "company_size_estimate": "mei",
+          "main_pain": "abrir MEI rapido"
+        }
+      },
+      "currentMessage": "Urgente, preciso essa semana",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"mark_qualified\",\"content\":\"Boa! Vou agendar agora.\",\"extracted_slots\":{\"decision_timeline\":\"urgent\"},\"confidence\":0.95,\"reasoning\":\"todos preenchidos\"}",
+      "expectedAction": "mark_qualified",
+      "expectedExtractedSlots": { "decision_timeline": "urgent" }
+    },
+    {
+      "id": "fecha-3-auto-promote",
+      "category": "fechamento",
+      "lead": {
+        "status": "qualifying",
+        "qualification_data": {
+          "contact_name": "Bia",
+          "has_existing_company": false,
+          "company_size_estimate": "mei",
+          "main_pain": "abrir MEI"
+        }
+      },
+      "currentMessage": "Esta semana",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"ask_next_slot\",\"content\":\"Mais alguma dúvida antes de fechar?\",\"extracted_slots\":{\"decision_timeline\":\"urgent\"},\"next_target_slot\":\"main_pain\",\"confidence\":0.7,\"reasoning\":\"LLM extraiu timeline mas não percebeu que completou\"}",
+      "expectedAction": "ask_next_slot",
+      "expectedExtractedSlots": { "decision_timeline": "urgent" }
+    },
+    {
+      "id": "schedule-1-terca-manha",
+      "category": "schedule",
+      "lead": {
+        "status": "qualified",
+        "qualification_data": {
+          "contact_name": "Diego",
+          "has_existing_company": true,
+          "company_size_estimate": "small",
+          "current_regime": "simples_nacional",
+          "main_pain": "trocar contador",
+          "decision_timeline": "this_month"
+        }
+      },
+      "currentMessage": "terça de manhã pra mim fica bom",
+      "preDetectExpected": "schedule_response",
+      "expectedAction": "mark_qualified"
+    },
+    {
+      "id": "schedule-2-amanha-14h",
+      "category": "schedule",
+      "lead": {
+        "status": "qualified",
+        "qualification_data": {
+          "contact_name": "Erika",
+          "has_existing_company": true,
+          "company_size_estimate": "medium",
+          "current_regime": "lucro_presumido",
+          "main_pain": "fechamento mensal atrasado",
+          "decision_timeline": "urgent"
+        }
+      },
+      "currentMessage": "Pode ser amanhã às 14h?",
+      "preDetectExpected": "schedule_response",
+      "expectedAction": "mark_qualified"
+    },
+    {
+      "id": "silent-1-scheduled-pending",
+      "category": "silent_handoff",
+      "lead": {
+        "status": "scheduled_pending",
+        "qualification_data": { "contact_name": "Fátima" }
+      },
+      "currentMessage": "alguma novidade?",
+      "preDetectExpected": "silent_handoff",
+      "expectedAction": "escalate_human"
+    },
+    {
+      "id": "silent-2-lost",
+      "category": "silent_handoff",
+      "lead": {
+        "status": "lost",
+        "qualification_data": { "contact_name": "Gabriel" }
+      },
+      "currentMessage": "obrigado",
+      "preDetectExpected": "silent_handoff",
+      "expectedAction": "escalate_human"
+    },
+    {
+      "id": "parse-err-1-json-invalido",
+      "category": "parse_error",
+      "lead": null,
+      "currentMessage": "Oi tudo bem?",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{action: ask_next_slot}",
+      "expectedAction": "parse_error",
+      "expectedExtractedSlots": {}
+    },
+    {
+      "id": "parse-err-2-action-invalida",
+      "category": "parse_error",
+      "lead": null,
+      "currentMessage": "Oi",
+      "preDetectExpected": "run_llm",
+      "llmResponse": "{\"action\":\"do_unknown_thing\",\"content\":\"x\",\"extracted_slots\":{},\"confidence\":0.5,\"reasoning\":\"r\"}",
+      "expectedAction": "parse_error",
+      "expectedExtractedSlots": {}
+    }
+  ]
+}
