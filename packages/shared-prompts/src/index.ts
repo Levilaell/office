@@ -25,10 +25,12 @@ export const examplePrompt: PromptDefinition = {
 
 export { routerPrompt } from './router.js';
 export {
+  ESPECIALISTA_COMERCIAL_ACTIONS,
   coordenadorAtendimentoPrompt,
-  type CoordenadorPromptInput,
-} from './atendimento/coordenador.js';
-export {
+  especialistaComercialPrompt,
   especialistaOperacionalPrompt,
+  type CoordenadorPromptInput,
+  type EspecialistaAction,
+  type EspecialistaComercialPromptInput,
   type EspecialistaOperacionalPromptInput,
-} from './atendimento/especialista_operacional.js';
+} from './atendimento/index.js';
