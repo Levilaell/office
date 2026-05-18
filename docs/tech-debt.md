@@ -36,14 +36,6 @@ só itens identificados durante implementação que merecem revisita.
 **Estimativa:** médio (~4h) — requer atualizar schemas em shared-events + producers em agent-runtime + consumers no provider
 **Quando atacar:** quando demo pro sócio mostrar fila de >50 approvals OU quando latência de update virar reclamação
 
-### TD-004 🔴 `decideApproval` sem `eq('status', 'pending')` no UPDATE
-
-**Detectado em:** Sprint 0.3d-B (relatório do CC)
-**Impacto:** race em decisões concorrentes (2 reviewers clicam aprovar ao mesmo tempo); aceitável pra MVP single-reviewer mas vira bug real em demo multi-user
-**Solução:** adicionar filtro no UPDATE + checar `rowsAffected`; se 0, retornar erro "approval já decidido"
-**Estimativa:** trivial (~30min)
-**Prioridade:** fechar antes de demo pro sócio
-
 ### TD-005 🟢 Script `scripts/seed-existing-tenants.ts` aponta pra URL errada
 
 **Detectado em:** 2026-05-15 (chat sessão Fase 0)
@@ -98,4 +90,8 @@ só itens identificados durante implementação que merecem revisita.
 
 ## Itens fechados
 
-(quando fechar um TD, mover pra cá com data e link de commit)
+### TD-004 ✅ `decideApproval` sem `eq('status', 'pending')` no UPDATE
+
+**Detectado em:** Sprint 0.3d-B
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** `packages/shared-domain/src/approvals/index.ts` agora aplica `.eq('status','pending')` no UPDATE e lança `ApprovalRaceConditionError` se zero rows. Endpoint `POST /api/approvals/[id]/decide` traduz o erro pra HTTP 409 com body `{ error: 'approval_already_resolved', approvalId }`. Testes em `packages/shared-domain/src/approvals/__tests__/decide-approval.test.ts`.
