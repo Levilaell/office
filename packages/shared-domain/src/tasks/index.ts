@@ -21,6 +21,12 @@ export type CreateTaskInput = {
   payload?: Json;
   parentTaskId?: string | null;
   dueAt?: string | null;
+  /**
+   * Opcional: pré-atribui a task a um agente no mesmo INSERT, mudando o
+   * status pra `assigned`. Evita o ciclo create→update do TD-001 quando
+   * o caller já sabe a quem despachar (ex: triagem sempre vai pro router).
+   */
+  assignedAgentId?: string | null;
 };
 
 export const createTask = async (
@@ -36,6 +42,11 @@ export const createTask = async (
     ...(input.payload !== undefined && { payload: input.payload }),
     parent_task_id: input.parentTaskId ?? null,
     due_at: input.dueAt ?? null,
+    ...(input.assignedAgentId !== undefined &&
+      input.assignedAgentId !== null && {
+        assigned_agent_id: input.assignedAgentId,
+        status: 'assigned',
+      }),
   };
   const { data, error } = await supabase.from('tasks').insert(insert).select().single();
   if (error) throw error;

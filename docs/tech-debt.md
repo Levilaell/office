@@ -13,13 +13,6 @@ só itens identificados durante implementação que merecem revisita.
 
 ## Itens abertos
 
-### TD-001 🟡 `enqueueTriagem` faz 2 writes na tabela tasks
-
-**Detectado em:** Sprint 0.3c (commit e447a43)
-**Impacto:** dobra writes desnecessários; race window pequena entre create e assignTask
-**Solução:** combinar em INSERT único com `assigned_agent_id` já preenchido
-**Estimativa:** trivial (~30min)
-
 ### TD-002 🟡 `incrementRunUsage` varre `agent_messages.content` em vez de accumulator
 
 **Detectado em:** Sprint 0.3c
@@ -89,6 +82,12 @@ só itens identificados durante implementação que merecem revisita.
 ---
 
 ## Itens fechados
+
+### TD-001 ✅ `enqueueTriagem` fazia 2 writes na tabela tasks
+
+**Detectado em:** Sprint 0.3c (commit e447a43)
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** `createTask` em `packages/shared-domain/src/tasks/index.ts` ganhou campo opcional `assignedAgentId`; quando presente, o INSERT já popula `assigned_agent_id` e seta `status='assigned'`. `enqueueTriagem` (agora em `packages/shared-domain/src/triagem/index.ts`) usa o novo campo — 1 write em vez de 2. Audit ainda registra `task.created` E `task.assigned` separadamente porque são duas transições lógicas; colapsar perderia informação no histórico.
 
 ### TD-004 ✅ `decideApproval` sem `eq('status', 'pending')` no UPDATE
 

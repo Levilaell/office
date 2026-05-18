@@ -25,3 +25,4 @@ export * from './agents/index';
 export * from './tasks/index';
 export * from './runs/index';
 export * from './approvals/index';
+export * from './triagem/index';
