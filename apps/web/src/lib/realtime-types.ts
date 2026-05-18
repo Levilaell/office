@@ -91,12 +91,42 @@ export type ChannelSessionSnapshot = {
   errorDetails: Record<string, unknown> | null;
 };
 
+export type LeadStatus =
+  | 'new'
+  | 'qualifying'
+  | 'qualified'
+  | 'scheduled_pending'
+  | 'converted'
+  | 'lost'
+  | 'dropped';
+
+export type LeadSnapshot = {
+  id: string;
+  primaryConversationId: string | null;
+  source: string;
+  status: LeadStatus;
+  /** Slots brutos (chaves do snake_case do banco). UI lê defensivamente
+   *  os campos que reconhece — slots novos não quebram render. */
+  qualificationData: Record<string, unknown>;
+  estimatedValueMonthly: number | null;
+  notes: string | null;
+  qualifiedAt: string | null;
+  scheduledCallAt: string | null;
+  convertedAt: string | null;
+  lostReason: string | null;
+  assignedToUserId: string | null;
+  convertedToAccountId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type InitialSnapshot = {
   agents: AgentSnapshot[];
   tasks: TaskSnapshot[];
   approvals: ApprovalSnapshot[];
   conversations: ConversationSnapshot[];
   channelSessions: ChannelSessionSnapshot[];
+  leads: LeadSnapshot[];
 };
 
 export type AgentRunSnapshot = {

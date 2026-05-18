@@ -8,6 +8,8 @@ import type {
   ConversationLastDecision,
   ConversationSnapshot,
   InitialSnapshot,
+  LeadSnapshot,
+  LeadStatus,
   TaskSnapshot,
 } from './realtime-types';
 
@@ -17,6 +19,7 @@ export type RealtimeState = {
   approvals: Record<string, ApprovalSnapshot>;
   conversations: Record<string, ConversationSnapshot>;
   channelSessions: Record<string, ChannelSessionSnapshot>;
+  leads: Record<string, LeadSnapshot>;
   hydrated: boolean;
   socketConnected: boolean;
 
@@ -47,6 +50,9 @@ export type RealtimeState = {
     id: string,
     status: ChannelSessionSnapshot['status'],
   ) => void;
+  upsertLead: (snap: LeadSnapshot) => void;
+  replaceLeads: (snaps: LeadSnapshot[]) => void;
+  updateLeadStatus: (id: string, status: LeadStatus) => void;
 };
 
 const indexById = <T extends { id: string }>(items: T[]): Record<string, T> => {
@@ -61,6 +67,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
   approvals: {},
   conversations: {},
   channelSessions: {},
+  leads: {},
   hydrated: false,
   socketConnected: false,
 
@@ -71,6 +78,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       approvals: indexById(snapshot.approvals),
       conversations: indexById(snapshot.conversations),
       channelSessions: indexById(snapshot.channelSessions),
+      leads: indexById(snapshot.leads),
       hydrated: true,
     }),
 
@@ -150,6 +158,23 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       return {
         channelSessions: {
           ...cur.channelSessions,
+          [id]: { ...existing, status },
+        },
+      };
+    }),
+
+  upsertLead: (snap) =>
+    set((cur) => ({ leads: { ...cur.leads, [snap.id]: snap } })),
+
+  replaceLeads: (snaps) => set({ leads: indexById(snaps) }),
+
+  updateLeadStatus: (id, status) =>
+    set((cur) => {
+      const existing = cur.leads[id];
+      if (!existing) return cur;
+      return {
+        leads: {
+          ...cur.leads,
           [id]: { ...existing, status },
         },
       };
@@ -239,3 +264,30 @@ export const useChannelSessions = (): ChannelSessionSnapshot[] =>
 export const useHydrated = (): boolean => useRealtimeStore((s) => s.hydrated);
 export const useSocketConnected = (): boolean =>
   useRealtimeStore((s) => s.socketConnected);
+
+// Sprint 1.4 — leads
+export const useLeads = (): LeadSnapshot[] =>
+  useRealtimeStore(
+    useShallow((s) => {
+      const all = Object.values(s.leads);
+      all.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+      return all;
+    }),
+  );
+
+export const useLead = (id: string | null | undefined): LeadSnapshot | null =>
+  useRealtimeStore((s) => (id ? (s.leads[id] ?? null) : null));
+
+export const useLeadsByStatus = (
+  status: LeadStatus | ReadonlyArray<LeadStatus>,
+): LeadSnapshot[] => {
+  const filterFn = (l: LeadSnapshot): boolean =>
+    Array.isArray(status) ? status.includes(l.status) : l.status === status;
+  return useRealtimeStore(
+    useShallow((s) => {
+      const all = Object.values(s.leads).filter(filterFn);
+      all.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+      return all;
+    }),
+  );
+};

@@ -7,6 +7,7 @@ import {
   toApprovalSnapshot,
   toChannelSessionSnapshot,
   toConversationSnapshot,
+  toLeadSnapshot,
   toTaskSnapshot,
 } from '@/lib/realtime-mappers';
 import type { InitialSnapshot } from '@/lib/realtime-types';
@@ -25,7 +26,7 @@ export default async function DashboardLayout({
   // Pre-busca o snapshot inicial server-side. RLS filtra por tenant via JWT
   // do Clerk. Fica garantido que o cliente só recebe dados do tenant ativo.
   const supabase = await getSupabaseForCurrentUser();
-  const [agentsRes, tasksRes, approvalsRes, conversationsRes, channelSessionsRes] =
+  const [agentsRes, tasksRes, approvalsRes, conversationsRes, channelSessionsRes, leadsRes] =
     await Promise.all([
       supabase.from('agents').select('*').order('created_at', { ascending: false }),
       supabase
@@ -49,6 +50,11 @@ export default async function DashboardLayout({
         .from('channel_sessions')
         .select('*')
         .order('channel', { ascending: true }),
+      supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200),
     ]);
 
   const initialSnapshot: InitialSnapshot = {
@@ -57,6 +63,7 @@ export default async function DashboardLayout({
     approvals: (approvalsRes.data ?? []).map(toApprovalSnapshot),
     conversations: (conversationsRes.data ?? []).map(toConversationSnapshot),
     channelSessions: (channelSessionsRes.data ?? []).map(toChannelSessionSnapshot),
+    leads: (leadsRes.data ?? []).map(toLeadSnapshot),
   };
 
   return <RealtimeProvider initialSnapshot={initialSnapshot}>{children}</RealtimeProvider>;

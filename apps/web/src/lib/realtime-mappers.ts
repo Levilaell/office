@@ -3,6 +3,7 @@ import type {
   Approval,
   ChannelSessionRow,
   ConversationRow,
+  LeadRow,
   Task,
 } from '@office/shared-domain';
 import {
@@ -23,8 +24,24 @@ import type {
   ApprovalSnapshot,
   ChannelSessionSnapshot,
   ConversationSnapshot,
+  LeadSnapshot,
+  LeadStatus,
   TaskSnapshot,
 } from './realtime-types';
+
+const ALLOWED_LEAD_STATUSES: ReadonlyArray<LeadStatus> = [
+  'new',
+  'qualifying',
+  'qualified',
+  'scheduled_pending',
+  'converted',
+  'lost',
+  'dropped',
+];
+
+const isLeadStatus = (value: unknown): value is LeadStatus =>
+  typeof value === 'string' &&
+  (ALLOWED_LEAD_STATUSES as readonly string[]).includes(value);
 
 const ALLOWED_TIERS: readonly AgentTier[] = ['triage', 'default', 'critical'];
 const isAgentTier = (value: unknown): value is AgentTier =>
@@ -164,6 +181,29 @@ export const toChannelSessionSnapshot = (
     lastHealthCheck: row.last_health_check,
     lastMessageAt: row.last_message_at,
     errorDetails: toRecordOrNull(row.error_details),
+  };
+};
+
+export const toLeadSnapshot = (row: LeadRow): LeadSnapshot => {
+  if (!isLeadStatus(row.status)) {
+    throw new Error(`invalid status in lead ${row.id}: ${row.status}`);
+  }
+  return {
+    id: row.id,
+    primaryConversationId: row.primary_conversation_id,
+    source: row.source,
+    status: row.status,
+    qualificationData: toRecord(row.qualification_data),
+    estimatedValueMonthly: row.estimated_value_monthly === null ? null : Number(row.estimated_value_monthly),
+    notes: row.notes,
+    qualifiedAt: row.qualified_at,
+    scheduledCallAt: row.scheduled_call_at,
+    convertedAt: row.converted_at,
+    lostReason: row.lost_reason,
+    assignedToUserId: row.assigned_to_user_id,
+    convertedToAccountId: row.converted_to_account_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 };
 

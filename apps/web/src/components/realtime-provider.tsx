@@ -10,6 +10,8 @@ import type {
   ChannelSessionSnapshot,
   ConversationSnapshot,
   InitialSnapshot,
+  LeadSnapshot,
+  LeadStatus,
   TaskSnapshot,
 } from '@/lib/realtime-types';
 
@@ -48,6 +50,26 @@ const refetchChannelSessions = async (): Promise<ChannelSessionSnapshot[]> => {
   return body.channelSessions;
 };
 
+const refetchLeads = async (): Promise<LeadSnapshot[]> => {
+  const r = await fetch('/api/atendimento/leads', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`leads fetch failed: ${r.status}`);
+  const body = (await r.json()) as { leads: LeadSnapshot[] };
+  return body.leads;
+};
+
+const ALLOWED_LEAD_STATUSES: ReadonlyArray<LeadStatus> = [
+  'new',
+  'qualifying',
+  'qualified',
+  'scheduled_pending',
+  'converted',
+  'lost',
+  'dropped',
+];
+
+const isLeadStatus = (v: unknown): v is LeadStatus =>
+  typeof v === 'string' && (ALLOWED_LEAD_STATUSES as readonly string[]).includes(v);
+
 export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const { isLoaded, isSignedIn, orgId, getToken } = useAuth();
   const socketRef = useRef<Socket | null>(null);
@@ -67,6 +89,8 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const updateChannelSessionStatus = useRealtimeStore(
     (s) => s.updateChannelSessionStatus,
   );
+  const replaceLeads = useRealtimeStore((s) => s.replaceLeads);
+  const updateLeadStatus = useRealtimeStore((s) => s.updateLeadStatus);
 
   // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
   useEffect(() => {
@@ -191,6 +215,40 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
           .catch((err) => console.error('[realtime] refetch conversations', err));
       });
 
+      // Sprint 1.4 — lead.status_changed: aplica delta direto se status
+      // novo é válido; refetch como fallback. Cobre tanto criação inicial
+      // (new) quanto transições internas.
+      socket.on('lead.status_changed', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as { leadId?: unknown; status?: unknown };
+        if (typeof p.leadId !== 'string' || !isLeadStatus(p.status)) {
+          refetchLeads()
+            .then(replaceLeads)
+            .catch((err) => console.error('[realtime] refetch leads', err));
+          return;
+        }
+        // Se lead ainda não está no store (recém criado), refetch é mais
+        // seguro do que tentar update — updateLeadStatus retorna no-op se
+        // não conhece o id.
+        const known = useRealtimeStore.getState().leads[p.leadId];
+        if (!known) {
+          refetchLeads()
+            .then(replaceLeads)
+            .catch((err) => console.error('[realtime] refetch leads', err));
+          return;
+        }
+        updateLeadStatus(p.leadId, p.status);
+      });
+
+      // Sprint 1.4 — lead.qualified: refetch pra trazer qualification_data
+      // atualizada (resumo de slots vai no payload mas store precisa do
+      // record completo; cheaper than payload merge logic).
+      socket.on('lead.qualified', () => {
+        refetchLeads()
+          .then(replaceLeads)
+          .catch((err) => console.error('[realtime] refetch leads', err));
+      });
+
       // channel_session.status_changed: aplicação direta do delta (payload
       // tem status novo). Refetch como fallback se status vier inválido.
       socket.on('channel_session.status_changed', (payload: unknown) => {
@@ -234,6 +292,8 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     markConversationEscalated,
     replaceChannelSessions,
     updateChannelSessionStatus,
+    replaceLeads,
+    updateLeadStatus,
   ]);
 
   return <>{children}</>;

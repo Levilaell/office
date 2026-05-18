@@ -58,6 +58,7 @@ const resetStore = () => {
     approvals: {},
     conversations: {},
     channelSessions: {},
+    leads: {},
     hydrated: false,
     socketConnected: false,
   });
@@ -73,6 +74,7 @@ describe('realtime-store', () => {
       approvals: [approval({ id: 'ap1' })],
       conversations: [],
       channelSessions: [],
+      leads: [],
     };
 
     useRealtimeStore.getState().hydrate(snap);
