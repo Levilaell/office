@@ -23,6 +23,8 @@ export {
   ConversationIntentChangedPayload,
   AgentEscalatedHumanPayload,
   SpecialistRespondedPayload,
+  LeadQualifiedPayload,
+  LeadStatusChangedPayload,
   AgentTaskJobPayload,
   isEventType,
   type EventType,

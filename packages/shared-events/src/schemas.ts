@@ -34,6 +34,9 @@ export const EVENT_TYPES = [
   // (respond ou escalate ou clarification). UI escuta pra atualizar lista
   // de conversations sem refetch.
   'specialist.responded',
+  // Sprint 1.4 — eventos do Especialista Comercial.
+  'lead.qualified',
+  'lead.status_changed',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -249,6 +252,40 @@ export const SpecialistRespondedPayload = z.object({
   dataUsed: z.array(z.string()).default([]),
 });
 export type SpecialistRespondedPayload = z.infer<typeof SpecialistRespondedPayload>;
+
+// Sprint 1.4 — Eventos do Especialista Comercial ---------------------------
+
+/**
+ * Lead acabou de transitar pra `qualified`. UI escuta pra notificar
+ * operador comercial e mostrar destaque na lista de leads.
+ *
+ * `qualificationSummary` é um resumo dos slots core preenchidos —
+ * subset do `leads.qualification_data` pra UI poder mostrar sem refetch.
+ * Schema livre (record) porque slots podem evoluir; UI defensiva extrai
+ * só o que reconhece.
+ */
+export const LeadQualifiedPayload = z.object({
+  tenantId: z.string().uuid(),
+  leadId: z.string().uuid(),
+  conversationId: z.string().uuid().nullable(),
+  agentId: z.string().uuid(),
+  traceId: z.string().min(1),
+  qualificationSummary: z.record(z.string(), z.unknown()).default({}),
+});
+export type LeadQualifiedPayload = z.infer<typeof LeadQualifiedPayload>;
+
+/**
+ * Toda transição de status de lead. UI escuta pra atualizar cards em
+ * tempo real sem refetch da lista.
+ */
+export const LeadStatusChangedPayload = z.object({
+  tenantId: z.string().uuid(),
+  leadId: z.string().uuid(),
+  previousStatus: z.string().min(1),
+  status: z.string().min(1),
+  traceId: z.string().min(1),
+});
+export type LeadStatusChangedPayload = z.infer<typeof LeadStatusChangedPayload>;
 
 // Envelope --------------------------------------------------------------------
 

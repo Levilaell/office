@@ -18,6 +18,7 @@ import type { AgentTier } from '@office/shared-config';
 import { setupSocketIo } from './realtime/socket.js';
 import { makeAgentTaskHandler } from './workers/agent-tasks.js';
 import { startCoordinatorSubscriber } from './workers/atendimento-coordenador.js';
+import { startEspecialistaComercialSubscriber } from './workers/atendimento-especialista-comercial.js';
 import { startEspecialistaOperacionalSubscriber } from './workers/atendimento-especialista-operacional.js';
 
 const app = new Hono();
@@ -111,12 +112,18 @@ const coordinatorSupabase = createServiceRoleClient({
 });
 const coordinatorSubscription = startCoordinatorSubscriber(coordinatorSupabase);
 
-// Especialista Operacional subscriber — consome agent.handoff_requested e
-// enfileira tasks pra ele quando toAgentKey === 'atendimento.especialista_operacional'.
-// Reusa o cliente service role (single connection pra todos workers do
-// agent-runtime).
+// Especialista Operacional subscriber — consome agent.handoff_requested
+// quando toAgentKey === 'atendimento.especialista_operacional'. Reusa o
+// cliente service role (single connection pra todos workers do agent-runtime).
 const especialistaOperacionalSubscription =
   startEspecialistaOperacionalSubscriber(coordinatorSupabase);
+
+// Especialista Comercial subscriber — consome agent.handoff_requested
+// quando toAgentKey === 'atendimento.especialista_comercial' (publicado pelo
+// Coordenador pra intents comercial.lead_*). Idempotência via jobId =
+// `escom-<messageId>`. Reusa o mesmo client service role.
+const especialistaComercialSubscription =
+  startEspecialistaComercialSubscriber(coordinatorSupabase);
 
 const port = PORTS.agentRuntime;
 httpServer.listen(port, () => {
@@ -131,6 +138,7 @@ const shutdown = async (signal: string): Promise<void> => {
   console.log(`[agent-runtime] received ${signal}, shutting down`);
   await especialistaOperacionalSubscription.stop().catch(() => undefined);
   await coordinatorSubscription.stop().catch(() => undefined);
+  await especialistaComercialSubscription.stop().catch(() => undefined);
   await subscription.stop().catch(() => undefined);
   await worker.close().catch(() => undefined);
   await closeAgentTasksQueue().catch(() => undefined);

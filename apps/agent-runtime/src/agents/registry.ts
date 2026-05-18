@@ -4,6 +4,11 @@ import {
   type CoordenadorOutput,
 } from './atendimento/coordenador/index.js';
 import {
+  runEspecialistaComercial,
+  type EspecialistaComercialInput,
+  type EspecialistaComercialOutput,
+} from './atendimento/especialista_comercial/index.js';
+import {
   runEspecialistaOperacional,
   type EspecialistaOperacionalInput,
   type EspecialistaOperacionalOutput,
@@ -18,6 +23,7 @@ import type { AgentHandler } from './types.js';
  *
  * Sprint 1.2 adiciona `atendimento.coordenador`.
  * Sprint 1.3 adiciona `atendimento.especialista_operacional`.
+ * Sprint 1.4 adiciona `atendimento.especialista_comercial`.
  */
 export const AGENT_HANDLERS: Record<string, AgentHandler> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers têm tipos específicos; o registry é poliglota por design.
@@ -26,6 +32,8 @@ export const AGENT_HANDLERS: Record<string, AgentHandler> = {
   'atendimento.coordenador': runCoordenadorAtendimento as AgentHandler<any, any>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers têm tipos específicos; o registry é poliglota por design.
   'atendimento.especialista_operacional': runEspecialistaOperacional as AgentHandler<any, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mesma razão acima.
+  'atendimento.especialista_comercial': runEspecialistaComercial as AgentHandler<any, any>,
 };
 
 export const getAgentHandler = (agentKey: string): AgentHandler => {
@@ -39,3 +47,4 @@ export const getAgentHandler = (agentKey: string): AgentHandler => {
 export type { RouterInput, RouterOutput };
 export type { CoordenadorInput, CoordenadorOutput };
 export type { EspecialistaOperacionalInput, EspecialistaOperacionalOutput };
+export type { EspecialistaComercialInput, EspecialistaComercialOutput };
