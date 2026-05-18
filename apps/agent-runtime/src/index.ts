@@ -18,6 +18,7 @@ import type { AgentTier } from '@office/shared-config';
 import { setupSocketIo } from './realtime/socket.js';
 import { makeAgentTaskHandler } from './workers/agent-tasks.js';
 import { startCoordinatorSubscriber } from './workers/atendimento-coordenador.js';
+import { startEspecialistaOperacionalSubscriber } from './workers/atendimento-especialista-operacional.js';
 
 const app = new Hono();
 
@@ -110,6 +111,13 @@ const coordinatorSupabase = createServiceRoleClient({
 });
 const coordinatorSubscription = startCoordinatorSubscriber(coordinatorSupabase);
 
+// Especialista Operacional subscriber — consome agent.handoff_requested e
+// enfileira tasks pra ele quando toAgentKey === 'atendimento.especialista_operacional'.
+// Reusa o cliente service role (single connection pra todos workers do
+// agent-runtime).
+const especialistaOperacionalSubscription =
+  startEspecialistaOperacionalSubscriber(coordinatorSupabase);
+
 const port = PORTS.agentRuntime;
 httpServer.listen(port, () => {
   console.log(`[agent-runtime] listening on http://localhost:${port}`);
@@ -121,6 +129,7 @@ const shutdown = async (signal: string): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[agent-runtime] received ${signal}, shutting down`);
+  await especialistaOperacionalSubscription.stop().catch(() => undefined);
   await coordinatorSubscription.stop().catch(() => undefined);
   await subscription.stop().catch(() => undefined);
   await worker.close().catch(() => undefined);
