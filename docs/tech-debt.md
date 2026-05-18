@@ -122,12 +122,13 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** migration adiciona coluna `assigned_to UUID NULL REFERENCES users(id)` + amplia CHECK de status com `'waiting_human'`. Refactor de `act.ts` pra setar status + assigned_to em vez de patch metadata. Backfill: tudo com metadata.assigned_to_human=true vira status='waiting_human'.
 **Quando atacar:** Sprint 1.3 (quando especialista entrar) ou Sprint 1.5
 
-### TD-019 🟡 Coordenador subscreve `message.received` direto; ADR-016 prevê `message.routed`
+### TD-019 📘 Coordenador subscreve `message.received` direto; ADR-016 prevê `message.routed`
 
 **Detectado em:** Sprint 1.2 (2026-05-19)
 **Impacto:** ADR-016 desenhou 3 camadas (Roteador global → Coordenador → Especialista). Na Fase 1, com Atendimento como único departamento, Coordenador subscreve direto a `message.received` — Roteador não roda em mensagens inbound de canais externos (só na rota `/api/triagem`). Quando segundo departamento entrar (Fase 2), Coordenador atual vai roteamento erroneamente toda mensagem inbound como Atendimento.
 **Solução:** introduzir evento `message.routed` (publicado pelo Roteador após classificar departamento). Coordenadores subscrevem `message.routed` filtrando pelo destination_department. Worker de "ingest inbound → Roteador" entra na cadeia entre o canal e o Coordenador.
 **Quando atacar:** Sprint quando segundo departamento (provavelmente Pessoal ou Fiscal) for ativado — sem desvio na Fase 1 com 1 departamento
+**Status:** documentado em ADR-019 (não é dívida ativa — é decisão consciente com critério de reabertura)
 
 ### TD-020 🟢 Pre-classify determinístico é mínimo
 

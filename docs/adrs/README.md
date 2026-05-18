@@ -21,6 +21,8 @@ Decisões arquiteturais da Plataforma Contábil em ordem cronológica. Formato: 
 - [ADR-015](015-channel-adapter.md) — Abstração ChannelAdapter para canais de comunicação
 - [ADR-016](016-coordenador-atendimento-roteamento.md) — Coordenador de Atendimento como camada de roteamento de departamento
 - [ADR-017](017-modo-shadow-tiers-autonomia.md) — Modo shadow e tiers de autonomia em conversa síncrona
+- [ADR-018](018-shared-domain-depends-on-shared-events.md) — `shared-domain` pode depender de `shared-events`
+- [ADR-019](019-coordenador-bypassa-roteador-fase-1.md) — Coordenador de Atendimento subscreve `message.received` direto na Fase 1
 
 ## Convenção
 
