@@ -67,8 +67,12 @@ describe('renderTemplate', () => {
 });
 
 describe('getTemplateById', () => {
-  it('encontra todos os 10 templates declarados (6 Sprint 1.2 + 4 Sprint 1.3)', () => {
-    expect(ATENDIMENTO_TEMPLATES).toHaveLength(10);
+  it('encontra todos os templates declarados', () => {
+    // Sprint 1.2: 6 (T02, T_THANKS, T_BYE, T04, T05, T13)
+    // Sprint 1.3: +4 (T03, T06, T07, T_NO_DATA)
+    // Sprint 1.4: +5 (T08, T08b, T09, T10, T10b)
+    // Total: 15
+    expect(ATENDIMENTO_TEMPLATES).toHaveLength(15);
     for (const t of ATENDIMENTO_TEMPLATES) {
       expect(getTemplateById(t.id)?.id).toBe(t.id);
     }
@@ -166,6 +170,101 @@ describe('T_NO_DATA', () => {
     if (result.ok) {
       expect(result.content).toContain('Não consegui encontrar');
       expect(result.content).toContain('Equipe Levi');
+    }
+  });
+});
+
+describe('templates Comercial (Sprint 1.4)', () => {
+  it('T08 renderiza com lead_first_name', () => {
+    const result = renderTemplate('T08', { lead_first_name: 'João' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toBe(
+        'Que ótimo ter você por aqui, João! Pra te ajudar da melhor forma, posso fazer algumas perguntas rápidas?',
+      );
+    }
+  });
+
+  it('T08 rejeita sem lead_first_name', () => {
+    const result = renderTemplate('T08', {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('missing_variables');
+      expect(result.missing).toEqual(['lead_first_name']);
+    }
+  });
+
+  it('T08b renderiza sem variáveis obrigatórias', () => {
+    const result = renderTemplate('T08b', {});
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toContain('qual seu nome?');
+    }
+  });
+
+  it('T09 passthrough — preserva content exato', () => {
+    const result = renderTemplate('T09', {
+      content: 'Qual o porte da empresa?',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toBe('Qual o porte da empresa?');
+    }
+  });
+
+  it('T09 preserva content multi-linha (contexto + pergunta)', () => {
+    const multiline = 'Boa, João!\n\nQual o porte da empresa?';
+    const result = renderTemplate('T09', { content: multiline });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toBe(multiline);
+    }
+  });
+
+  it('T09 rejeita content vazio ou só whitespace', () => {
+    const empty = renderTemplate('T09', { content: '' });
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.reason).toBe('missing_variables');
+
+    const blank = renderTemplate('T09', { content: '   ' });
+    expect(blank.ok).toBe(false);
+    if (!blank.ok) expect(blank.reason).toBe('missing_variables');
+  });
+
+  it('T10 renderiza com lead_first_name e responsavel_name', () => {
+    const result = renderTemplate('T10', {
+      lead_first_name: 'João',
+      responsavel_name: 'Equipe Levi',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toContain('Perfeito, João');
+      expect(result.content).toContain('com Equipe Levi');
+      expect(result.content).toContain('Qual o melhor dia e horário');
+    }
+  });
+
+  it('T10 exige ambos lead_first_name e responsavel_name', () => {
+    const semNome = renderTemplate('T10', { responsavel_name: 'X' });
+    expect(semNome.ok).toBe(false);
+    const semResp = renderTemplate('T10', { lead_first_name: 'João' });
+    expect(semResp.ok).toBe(false);
+  });
+
+  it('T10b renderiza com responsavel_name', () => {
+    const result = renderTemplate('T10b', { responsavel_name: 'Levi' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.content).toContain('Combinado!');
+      expect(result.content).toContain('Vou confirmar com Levi');
+    }
+  });
+
+  it('T10b exige responsavel_name', () => {
+    const result = renderTemplate('T10b', {});
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.missing).toEqual(['responsavel_name']);
     }
   });
 });
