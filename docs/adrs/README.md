@@ -17,6 +17,10 @@ Decisões arquiteturais da Plataforma Contábil em ordem cronológica. Formato: 
 - [ADR-011](011-ux-quatro-superficies.md) — UX em quatro superfícies complementares (inbox, conversa, painel, escritório 2D)
 - [ADR-012](012-supabase-cloud-migration.md) — Supabase Cloud como ambiente de desenvolvimento
 - [ADR-013](013-redis-nativo-dev.md) — Redis nativo no WSL como backend de filas em dev
+- [ADR-014](014-escopo-atendimento-fase-1.md) — Escopo do Departamento de Atendimento na Fase 1 (operacional + comercial leve)
+- [ADR-015](015-channel-adapter.md) — Abstração ChannelAdapter para canais de comunicação
+- [ADR-016](016-coordenador-atendimento-roteamento.md) — Coordenador de Atendimento como camada de roteamento de departamento
+- [ADR-017](017-modo-shadow-tiers-autonomia.md) — Modo shadow e tiers de autonomia em conversa síncrona
 
 ## Convenção
 
