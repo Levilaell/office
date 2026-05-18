@@ -56,6 +56,7 @@ const resetStore = () => {
     agents: {},
     tasks: {},
     approvals: {},
+    conversations: {},
     hydrated: false,
     socketConnected: false,
   });
@@ -69,6 +70,7 @@ describe('realtime-store', () => {
       agents: [agent({ id: 'a1' }), agent({ id: 'a2', agentKey: 'coord-fiscal' })],
       tasks: [task({ id: 't1' }), task({ id: 't2' })],
       approvals: [approval({ id: 'ap1' })],
+      conversations: [],
     };
 
     useRealtimeStore.getState().hydrate(snap);

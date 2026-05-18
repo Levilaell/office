@@ -17,6 +17,7 @@ export {
   AgentStateChangedPayload,
   ApprovalCreatedPayload,
   ApprovalResolvedPayload,
+  InteractionReceivedPayload,
   AgentTaskJobPayload,
   isEventType,
   type EventType,
