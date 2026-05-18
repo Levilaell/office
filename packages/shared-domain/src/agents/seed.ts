@@ -37,6 +37,42 @@ const DEFAULT_AGENTS: DefaultAgentDefinition[] = [
     budget: { maxTokens: 1500, maxCostUsd: 0.02, maxTurns: 1 },
     tools: [],
   },
+  {
+    agentKey: 'atendimento.coordenador',
+    role: 'coordinator',
+    department: 'atendimento',
+    name: 'Coordenador de Atendimento',
+    description:
+      'Recebe mensagens de clientes finais, classifica intent fino (operacional vs comercial vs admin), delega especialista ou escala humano.',
+    tier: 'default',
+    autonomyTier: 'sugestivo',
+    budget: { maxTokens: 4000, maxCostUsd: 0.05, maxTurns: 5 },
+    tools: [],
+  },
+  {
+    agentKey: 'atendimento.especialista_operacional',
+    role: 'specialist',
+    department: 'atendimento',
+    name: 'Especialista Operacional de Atendimento',
+    description:
+      'Responde dúvidas operacionais (status de obrigação, documentos, prazos, comprovantes) consultando dados canônicos do account. Read-only na Fase 1.',
+    tier: 'default',
+    autonomyTier: 'sugestivo',
+    budget: { maxTokens: 4000, maxCostUsd: 0.05, maxTurns: 3 },
+    tools: [],
+  },
+  {
+    agentKey: 'atendimento.especialista_comercial',
+    role: 'specialist',
+    department: 'atendimento',
+    name: 'Especialista de Qualificação Comercial',
+    description:
+      'Conduz qualificação inicial de leads novos. Preenche slots estruturados (porte, regime, dor, prazo) e sinaliza humano pra agendamento.',
+    tier: 'triage',
+    autonomyTier: 'sugestivo',
+    budget: { maxTokens: 2000, maxCostUsd: 0.02, maxTurns: 5 },
+    tools: [],
+  },
 ];
 
 /**

@@ -19,6 +19,7 @@ export const EVENT_TYPES = [
   'agent.state_changed',
   'approval.created',
   'approval.resolved',
+  'message.received',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -118,6 +119,15 @@ export const ApprovalResolvedPayload = z.object({
   reviewerUserId: z.string().uuid().nullable(),
 });
 export type ApprovalResolvedPayload = z.infer<typeof ApprovalResolvedPayload>;
+
+export const MessageReceivedPayload = z.object({
+  tenantId: z.string().uuid(),
+  accountId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  channel: z.enum(['email', 'whatsapp', 'simulated_webhook', 'sms']),
+});
+export type MessageReceivedPayload = z.infer<typeof MessageReceivedPayload>;
 
 // Envelope --------------------------------------------------------------------
 

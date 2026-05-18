@@ -26,3 +26,4 @@ export * from './tasks/index';
 export * from './runs/index';
 export * from './approvals/index';
 export * from './triagem/index';
+export * from './conversations/index';

@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -325,6 +330,130 @@ export type Database = {
           },
           {
             foreignKeyName: "approvals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          account_id: string
+          channel: string
+          channel_handle: string
+          created_at: string
+          id: string
+          intent_current: string | null
+          last_message_at: string | null
+          metadata: Json
+          status: string
+          subject: string | null
+          tenant_id: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          channel: string
+          channel_handle: string
+          created_at?: string
+          id?: string
+          intent_current?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          status?: string
+          subject?: string | null
+          tenant_id: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          channel?: string
+          channel_handle?: string
+          created_at?: string
+          id?: string
+          intent_current?: string | null
+          last_message_at?: string | null
+          metadata?: Json
+          status?: string
+          subject?: string | null
+          tenant_id?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          account_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          metadata: Json
+          sender_id: string | null
+          sender_type: string
+          tenant_id: string
+        }
+        Insert: {
+          account_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          metadata?: Json
+          sender_id?: string | null
+          sender_type: string
+          tenant_id: string
+        }
+        Update: {
+          account_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          metadata?: Json
+          sender_id?: string | null
+          sender_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -790,4 +919,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

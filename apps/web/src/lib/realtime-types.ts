@@ -3,6 +3,8 @@ import type {
   AgentState,
   ApprovalStatus,
   AutonomyTier,
+  ConversationChannel,
+  ConversationStatus,
   Department,
   TaskStatus,
 } from '@office/shared-types';
@@ -50,10 +52,22 @@ export type ApprovalSnapshot = {
   createdAt: string;
 };
 
+export type ConversationSnapshot = {
+  id: string;
+  accountId: string;
+  channel: ConversationChannel;
+  channelHandle: string;
+  status: ConversationStatus;
+  subject: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+};
+
 export type InitialSnapshot = {
   agents: AgentSnapshot[];
   tasks: TaskSnapshot[];
   approvals: ApprovalSnapshot[];
+  conversations: ConversationSnapshot[];
 };
 
 export type AgentRunSnapshot = {

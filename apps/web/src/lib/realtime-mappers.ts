@@ -1,9 +1,16 @@
-import type { Agent, Approval, Task } from '@office/shared-domain';
+import type {
+  Agent,
+  Approval,
+  ConversationRow,
+  Task,
+} from '@office/shared-domain';
 import {
   isAgentRole,
   isAgentState,
   isApprovalStatus,
   isAutonomyTier,
+  isConversationChannel,
+  isConversationStatus,
   isDepartment,
   isTaskStatus,
 } from '@office/shared-types';
@@ -11,6 +18,7 @@ import type {
   AgentSnapshot,
   AgentTier,
   ApprovalSnapshot,
+  ConversationSnapshot,
   TaskSnapshot,
 } from './realtime-types';
 
@@ -78,6 +86,25 @@ export const toTaskSnapshot = (row: Task): TaskSnapshot => {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at,
+  };
+};
+
+export const toConversationSnapshot = (row: ConversationRow): ConversationSnapshot => {
+  if (!isConversationChannel(row.channel)) {
+    throw new Error(`invalid channel in conversation ${row.id}: ${row.channel}`);
+  }
+  if (!isConversationStatus(row.status)) {
+    throw new Error(`invalid status in conversation ${row.id}: ${row.status}`);
+  }
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    channel: row.channel,
+    channelHandle: row.channel_handle,
+    status: row.status,
+    subject: row.subject,
+    lastMessageAt: row.last_message_at,
+    unreadCount: row.unread_count,
   };
 };
 
