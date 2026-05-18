@@ -68,29 +68,32 @@ Toda tabela de domínio carrega `tenant_id`. RLS obrigatório.
 ```
 apps/
   web/                  # Next.js (UI + API routes)
-  agent-runtime/        # Serviço Node com LangGraph
-  workers/              # Workers BullMQ
+  agent-runtime/        # Serviço Node com LangGraph + Socket.io
+  workers/              # Reservado pra notificações outbound (placeholder)
 packages/
-  shared-domain/        # Modelo contábil compartilhado
-  shared-db/            # Schema, migrations, tipos Supabase
+  shared-domain/        # Lógica de domínio + repositórios + triagem
+  shared-db/            # Cliente Supabase + tipos gerados
+  shared-events/        # BullMQ queues + Redis pub/sub + schemas Zod
+  shared-llm/           # Wrapper Anthropic + tracing Langfuse + budget
   shared-prompts/       # Prompts versionados
-  shared-types/         # Tipos TS compartilhados
-  shared-config/        # Env, constants
+  shared-types/         # Tipos TS compartilhados (enums, branded types)
+  shared-config/        # Env (Zod) + constants
 .claude/rules/          # Regras detalhadas por tema
 docs/adrs/              # ADRs
 ```
 
 Cada `apps/*` pode ter CLAUDE.md local com contexto específico que sobrescreve o raiz.
 
-## Estado atual (v0.1.0-fase-0)
+## Estado atual (v0.1.0-fase-0, entrando em Fase 1)
 
-- Fase 0 (Fundações): CONCLUÍDA
-- Hello world: roteador Haiku 4.5 classificando triagens em produção
-- Custo médio por triagem: ~USD 0.0008
-- Tempo médio: 2-3s ponta a ponta
-- Cobertura: 47 testes unit + integration verdes
+- Fase 0 (Fundações): CONCLUÍDA. Tag `v0.1.0-fase-0`.
+- Sprint 0.3e (runs/métricas no AgentSheet): CONCLUÍDA. UI de runs recentes e métricas (24h/7d/30d) por agente já live.
+- Sprint 1.0-prep: CONCLUÍDA. Fechou TD-001, TD-002, TD-004. Triagem migrou pra `packages/shared-domain/src/triagem` (ponto de entrada único pra rota Next e futuros webhooks de canal).
+- Hello world: roteador Haiku 4.5 classificando triagens em produção. Custo médio ~USD 0.0008, latência 2-3s ponta a ponta.
+- Cobertura: 80 testes unit + 17 integration verdes (rodam em `pnpm test` e `pnpm test:integration`).
 - Departamentos: só `platform` tem agente real (Roteador). `atendimento`, `societario`, `pessoal`, `contabil`, `fiscal`, `financeiro_interno` têm salas no escritório 2D mas vazios.
-- Próximo: Sprint 0.3e (painel runs) e Fase 1 (Atendimento — primeiro coordenador + specialists)
+- ADRs de Fase 1 publicados (014-017): escopo do Atendimento, ChannelAdapter, Coordenador, modo shadow + tiers de autonomia em conversa síncrona.
+- Próximo: Sprint 1.0 — Fundações de Atendimento (tabelas conversations/messages/channels + Coordenador + primeiro ChannelAdapter). Em andamento no branch `feat/atendimento-foundations`.
 
 ## Comandos
 
@@ -128,9 +131,10 @@ Dentro de padrão já estabelecido: executar sem perguntar.
 ## Referências
 
 - `@docs/escopo-produto.md` — escopo completo
-- `@docs/adrs/` — decisões arquiteturais
+- `@docs/adrs/` — decisões arquiteturais (incluindo 014-017 para Fase 1: escopo Atendimento, ChannelAdapter, Coordenador, modo shadow)
 - `@docs/tech-debt.md` — dívidas técnicas conhecidas, priorizadas
 - `@docs/development.md` — setup e workflow de dev
+- `@docs/levantamento.md` — snapshot completo do código (estrutura, schemas, kernels, gaps) congelado no fim da Fase 0. Útil pra orientar uma sessão fresca sem ter que reexplorar o repo.
 - `@.claude/rules/multi-tenancy.md` — RLS, hierarquia, isolamento
 - `@.claude/rules/agents-architecture.md` — runtime, handoffs, memória
 - `@.claude/rules/llm-cost.md` — budgets, cascade, cache
