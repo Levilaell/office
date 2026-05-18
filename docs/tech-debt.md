@@ -13,14 +13,6 @@ só itens identificados durante implementação que merecem revisita.
 
 ## Itens abertos
 
-### TD-002 🟡 `incrementRunUsage` varre `agent_messages.content` em vez de accumulator
-
-**Detectado em:** Sprint 0.3c
-**Impacto:** funciona pra single-call mas vai falhar/imprecisar quando agentes fizerem multi-call (ex: Sonnet com tool use iterativo)
-**Solução:** adicionar `usage` e `costUsd` accumulator explícito no AgentContext, propagado pelo wrapper de LLM
-**Estimativa:** médio (~2h)
-**Bloqueador:** entra obrigatoriamente na Sprint 0.4 (primeiro agente multi-call)
-
 ### TD-003 🟡 Eventos `task.*` e `approval.*` carregam delta, não snapshot
 
 **Detectado em:** Sprint 0.3d-A (commit 21be719)
@@ -82,6 +74,14 @@ só itens identificados durante implementação que merecem revisita.
 ---
 
 ## Itens fechados
+
+### TD-002 ✅ `incrementRunUsage` varria `agent_messages.content` em vez de accumulator
+
+**Detectado em:** Sprint 0.3c
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** invertida a estratégia — o agente acumula tokens/custo direto após cada `llmCall` chamando `incrementRunUsage` (agora com signature por objeto: `{ turns?, tokensIn, tokensOut, costUsd }`, turns default = 1). Worker em `agent-runtime/workers/agent-tasks.ts` deixou de escanear `agent_messages`. Semântica de `turns` formalizada como "número de chamadas de LLM no run", coerente com `agents.budget.maxTurns`. Função agora throwa `RunNotFoundError` em vez de retornar null silenciosamente — tokens perdidos viram bug invisível de billing. Testes em `packages/shared-domain/src/runs/__tests__/increment-run-usage.test.ts` cobrem soma sequencial, default de turns, runs ausentes.
+
+**Residual:** read-modify-write não é atômico em multi-writer. Aceitável hoje porque runs são single-threaded por design (1 worker BullMQ processa 1 run por vez). Atomicidade real exigiria função Postgres + migration — registrado como caminho futuro mas sem TD ativo enquanto runs forem single-threaded.
 
 ### TD-001 ✅ `enqueueTriagem` fazia 2 writes na tabela tasks
 

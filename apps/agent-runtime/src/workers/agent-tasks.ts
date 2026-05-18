@@ -4,7 +4,6 @@ import {
   createServiceRoleClient,
   getAgentByKey,
   getTaskById,
-  incrementRunUsage,
   recordTaskLifecycle,
   updateAgentState,
   updateRunStatus,
@@ -248,30 +247,10 @@ export const makeAgentTaskHandler = (deps: Deps) =>
 
       const department = extractDepartment(result);
 
-      // Soma tokens/custo acumulados via audit metadata.
-      // Pega o que entrou pelo agent_messages (assistant message).
-      const { data: usageRows } = await client
-        .from('agent_messages')
-        .select('content')
-        .eq('run_id', run.id)
-        .eq('role', 'assistant');
-      let totalTokens = 0;
-      let totalCost = 0;
-      for (const row of usageRows ?? []) {
-        const content = row.content as
-          | { usage?: { inputTokens?: number; outputTokens?: number }; costUsd?: number }
-          | null;
-        if (!content) continue;
-        const input = content.usage?.inputTokens ?? 0;
-        const output = content.usage?.outputTokens ?? 0;
-        totalTokens += input + output;
-        totalCost += content.costUsd ?? 0;
-      }
-      if (totalTokens > 0 || totalCost > 0) {
-        await incrementRunUsage(client, run.id, 1, totalTokens, totalCost);
-      } else {
-        await incrementRunUsage(client, run.id, 1, 0, 0);
-      }
+      // Contabilidade de uso (turns/tokens/custo) é responsabilidade do agente,
+      // que chama incrementRunUsage após cada llmCall — fecha TD-002. Worker
+      // não scaneia agent_messages aqui; se o handler concluiu sem chamar LLM,
+      // os contadores ficam em 0 e isso é o resultado correto.
 
       await updateRunStatus(client, run.id, 'completed', null);
       await updateTaskStatus(client, taskId, 'completed', result as Json);
