@@ -27,3 +27,4 @@ export * from './runs/index';
 export * from './approvals/index';
 export * from './triagem/index';
 export * from './conversations/index';
+export * from './channels/index';
