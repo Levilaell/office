@@ -1,3 +1,8 @@
+import {
+  runCoordenadorAtendimento,
+  type CoordenadorInput,
+  type CoordenadorOutput,
+} from './atendimento/coordenador/index.js';
 import { runRouter, type RouterInput, type RouterOutput } from './router/index.js';
 import type { AgentHandler } from './types.js';
 
@@ -6,11 +11,13 @@ import type { AgentHandler } from './types.js';
  * `agents.agent_key` no DB e com o `agentKey` que viaja no payload do job
  * BullMQ — é assim que o worker resolve qual handler invocar.
  *
- * Cresce conforme novos agentes entram. Sprint 0.3c só tem o roteador.
+ * Sprint 1.2 adiciona `atendimento.coordenador`.
  */
 export const AGENT_HANDLERS: Record<string, AgentHandler> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers têm tipos específicos; o registry é poliglota por design.
   router: runRouter as AgentHandler<any, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- handlers têm tipos específicos; o registry é poliglota por design.
+  'atendimento.coordenador': runCoordenadorAtendimento as AgentHandler<any, any>,
 };
 
 export const getAgentHandler = (agentKey: string): AgentHandler => {
@@ -22,3 +29,4 @@ export const getAgentHandler = (agentKey: string): AgentHandler => {
 };
 
 export type { RouterInput, RouterOutput };
+export type { CoordenadorInput, CoordenadorOutput };

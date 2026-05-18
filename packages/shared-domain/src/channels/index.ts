@@ -54,3 +54,9 @@ export {
   type UpsertChannelSessionInput,
   type UpdateChannelSessionStatusInput,
 } from './sessions';
+
+export {
+  sendAgentMessage,
+  type SendAgentMessageInput,
+  type SendAgentMessageResult,
+} from './outbound';

@@ -337,6 +337,72 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          account_id: string | null
+          action: string
+          actor: string
+          after: Json | null
+          before: Json | null
+          cost_usd: number | null
+          created_at: string
+          id: string
+          metadata: Json
+          model: string | null
+          prompt_version: string | null
+          resource: string
+          tenant_id: string | null
+          trace_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          action: string
+          actor: string
+          after?: Json | null
+          before?: Json | null
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          prompt_version?: string | null
+          resource: string
+          tenant_id?: string | null
+          trace_id: string
+        }
+        Update: {
+          account_id?: string | null
+          action?: string
+          actor?: string
+          after?: Json | null
+          before?: Json | null
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          model?: string | null
+          prompt_version?: string | null
+          resource?: string
+          tenant_id?: string | null
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_sessions: {
         Row: {
           channel: string
@@ -386,6 +452,96 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "channel_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_classifications: {
+        Row: {
+          agent_id: string
+          agent_run_id: string | null
+          confidence: number | null
+          conversation_id: string
+          cost_usd: number | null
+          created_at: string
+          decision: string
+          decision_metadata: Json
+          id: string
+          intent: string
+          message_id: string | null
+          model: string | null
+          prompt_version: string | null
+          reasoning: string | null
+          tenant_id: string
+        }
+        Insert: {
+          agent_id: string
+          agent_run_id?: string | null
+          confidence?: number | null
+          conversation_id: string
+          cost_usd?: number | null
+          created_at?: string
+          decision: string
+          decision_metadata?: Json
+          id?: string
+          intent: string
+          message_id?: string | null
+          model?: string | null
+          prompt_version?: string | null
+          reasoning?: string | null
+          tenant_id: string
+        }
+        Update: {
+          agent_id?: string
+          agent_run_id?: string | null
+          confidence?: number | null
+          conversation_id?: string
+          cost_usd?: number | null
+          created_at?: string
+          decision?: string
+          decision_metadata?: Json
+          id?: string
+          intent?: string
+          message_id?: string | null
+          model?: string | null
+          prompt_version?: string | null
+          reasoning?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_classifications_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_classifications_agent_run_id_fkey"
+            columns: ["agent_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_classifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_classifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_classifications_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -456,6 +612,57 @@ export type Database = {
           },
         ]
       }
+      entities: {
+        Row: {
+          account_id: string
+          address: Json | null
+          created_at: string
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          address?: Json | null
+          created_at?: string
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          address?: Json | null
+          created_at?: string
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entities_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           account_id: string
@@ -510,123 +717,6 @@ export type Database = {
           },
           {
             foreignKeyName: "messages_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      audit_log: {
-        Row: {
-          account_id: string | null
-          action: string
-          actor: string
-          after: Json | null
-          before: Json | null
-          cost_usd: number | null
-          created_at: string
-          id: string
-          metadata: Json
-          model: string | null
-          prompt_version: string | null
-          resource: string
-          tenant_id: string | null
-          trace_id: string
-        }
-        Insert: {
-          account_id?: string | null
-          action: string
-          actor: string
-          after?: Json | null
-          before?: Json | null
-          cost_usd?: number | null
-          created_at?: string
-          id?: string
-          metadata?: Json
-          model?: string | null
-          prompt_version?: string | null
-          resource: string
-          tenant_id?: string | null
-          trace_id: string
-        }
-        Update: {
-          account_id?: string | null
-          action?: string
-          actor?: string
-          after?: Json | null
-          before?: Json | null
-          cost_usd?: number | null
-          created_at?: string
-          id?: string
-          metadata?: Json
-          model?: string | null
-          prompt_version?: string | null
-          resource?: string
-          tenant_id?: string | null
-          trace_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_log_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audit_log_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      entities: {
-        Row: {
-          account_id: string
-          address: Json | null
-          created_at: string
-          id: string
-          inscricao_estadual: string | null
-          inscricao_municipal: string | null
-          tenant_id: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          address?: Json | null
-          created_at?: string
-          id?: string
-          inscricao_estadual?: string | null
-          inscricao_municipal?: string | null
-          tenant_id: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          address?: Json | null
-          created_at?: string
-          id?: string
-          inscricao_estadual?: string | null
-          inscricao_municipal?: string | null
-          tenant_id?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "entities_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "entities_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -760,6 +850,7 @@ export type Database = {
         Row: {
           clerk_org_id: string
           created_at: string
+          display_settings: Json
           id: string
           name: string
           status: string
@@ -769,6 +860,7 @@ export type Database = {
         Insert: {
           clerk_org_id: string
           created_at?: string
+          display_settings?: Json
           id?: string
           name: string
           status?: string
@@ -778,6 +870,7 @@ export type Database = {
         Update: {
           clerk_org_id?: string
           created_at?: string
+          display_settings?: Json
           id?: string
           name?: string
           status?: string

@@ -21,6 +21,15 @@ export const EVENT_TYPES = [
   'approval.resolved',
   'message.received',
   'channel_session.status_changed',
+  // Sprint 1.2 — Coordenador de Atendimento.
+  // `agent.handoff_requested` é separado de `handoff.requested` porque o
+  // payload é diferente: handoff aqui aponta pra agentKey (não agentId) e
+  // carrega conversationId/messageId — o consumidor (Especialista, Sprint
+  // 1.3) precisa resolver o agentId em tempo de despacho e ler a mensagem
+  // pra contexto.
+  'agent.handoff_requested',
+  'conversation.intent_changed',
+  'agent.escalated_human',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -146,6 +155,68 @@ export const ChannelSessionStatusChangedPayload = z.object({
 export type ChannelSessionStatusChangedPayload = z.infer<
   typeof ChannelSessionStatusChangedPayload
 >;
+
+// Sprint 1.2 — Eventos do Coordenador de Atendimento ------------------------
+
+/**
+ * Coordenador decide encaminhar pra especialista do departamento. Sprint
+ * 1.2 só PUBLICA — quem consome é o Especialista (Sprint 1.3+).
+ *
+ * `toAgentKey` (não `toAgentId`): no momento do handoff, o Coordenador sabe
+ * a função (`atendimento.especialista_operacional`), não o UUID do agente
+ * naquele tenant. O consumidor resolve via `getAgentByKey`.
+ */
+export const AgentHandoffRequestedPayload = z.object({
+  fromAgentId: z.string().uuid(),
+  toAgentKey: z.string().min(1),
+  tenantId: z.string().uuid(),
+  accountId: z.string().uuid().nullable(),
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  traceId: z.string().min(1),
+  intent: z.string().min(1),
+  reasoning: z.string().min(1),
+  // Payload livre pro especialista — slot data, contexto, qualquer coisa
+  // que o Coordenador queira repassar sem inventar campos novos.
+  context: z.record(z.unknown()).default({}),
+});
+export type AgentHandoffRequestedPayload = z.infer<typeof AgentHandoffRequestedPayload>;
+
+/**
+ * Conversation teve intent classificado/atualizado. UI escuta pra atualizar
+ * badge sem refetch.
+ */
+export const ConversationIntentChangedPayload = z.object({
+  tenantId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  intent: z.string().min(1),
+  decision: z.enum([
+    'respond_direct',
+    'handoff_specialist',
+    'escalate_human',
+    'ignore',
+  ]),
+  classificationId: z.string().uuid(),
+  confidence: z.number().min(0).max(1).nullable(),
+});
+export type ConversationIntentChangedPayload = z.infer<
+  typeof ConversationIntentChangedPayload
+>;
+
+/**
+ * Coordenador (ou outro agente no futuro) escalou pra humano. UI escuta pra
+ * mostrar badge "aguardando humano" e notificar operador.
+ */
+export const AgentEscalatedHumanPayload = z.object({
+  tenantId: z.string().uuid(),
+  agentId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid().nullable(),
+  reason: z.string().min(1),
+  intent: z.string().min(1),
+  traceId: z.string().min(1),
+});
+export type AgentEscalatedHumanPayload = z.infer<typeof AgentEscalatedHumanPayload>;
 
 // Envelope --------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ import { createAdaptorServer } from '@hono/node-server';
 import { Hono } from 'hono';
 import { Server as IOServer } from 'socket.io';
 import { PORTS } from '@office/shared-config/constants';
-import { health } from '@office/shared-domain';
+import { createServiceRoleClient, health } from '@office/shared-domain';
 import { llmCall, type LlmCallInput, shutdownLlmTracing } from '@office/shared-llm';
 import {
   closeAgentTasksQueue,
@@ -17,6 +17,7 @@ import {
 import type { AgentTier } from '@office/shared-config';
 import { setupSocketIo } from './realtime/socket.js';
 import { makeAgentTaskHandler } from './workers/agent-tasks.js';
+import { startCoordinatorSubscriber } from './workers/atendimento-coordenador.js';
 
 const app = new Hono();
 
@@ -100,6 +101,15 @@ const subscription = subscribeEvents('tenant:*', async (channel, eventType, payl
   io.to(channel).emit(eventType, payload);
 });
 
+// Coordenador subscriber — consome message.received e enfileira agent-tasks
+// pra cada mensagem nova. Usa service role pra contornar RLS (subscriber não
+// tem JWT de user). Idempotência via BullMQ jobId = `coord-<messageId>`.
+const coordinatorSupabase = createServiceRoleClient({
+  url: agentRuntimeEnv.SUPABASE_URL,
+  serviceRoleKey: agentRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY,
+});
+const coordinatorSubscription = startCoordinatorSubscriber(coordinatorSupabase);
+
 const port = PORTS.agentRuntime;
 httpServer.listen(port, () => {
   console.log(`[agent-runtime] listening on http://localhost:${port}`);
@@ -111,6 +121,7 @@ const shutdown = async (signal: string): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[agent-runtime] received ${signal}, shutting down`);
+  await coordinatorSubscription.stop().catch(() => undefined);
   await subscription.stop().catch(() => undefined);
   await worker.close().catch(() => undefined);
   await closeAgentTasksQueue().catch(() => undefined);

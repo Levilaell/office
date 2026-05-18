@@ -93,6 +93,37 @@ export const toTaskSnapshot = (row: Task): TaskSnapshot => {
   };
 };
 
+const VALID_DECISIONS: ReadonlyArray<NonNullable<ConversationSnapshot['lastDecision']>> = [
+  'respond_direct',
+  'handoff_specialist',
+  'escalate_human',
+  'ignore',
+];
+
+const isLastDecision = (
+  value: unknown,
+): value is NonNullable<ConversationSnapshot['lastDecision']> =>
+  typeof value === 'string' &&
+  (VALID_DECISIONS as readonly string[]).includes(value);
+
+const readAssignedToHuman = (metadata: unknown): boolean => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false;
+  }
+  const v = (metadata as Record<string, unknown>).assigned_to_human;
+  return v === true;
+};
+
+const readLastDecision = (
+  metadata: unknown,
+): NonNullable<ConversationSnapshot['lastDecision']> | null => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const v = (metadata as Record<string, unknown>).last_decision;
+  return isLastDecision(v) ? v : null;
+};
+
 export const toConversationSnapshot = (row: ConversationRow): ConversationSnapshot => {
   if (!isConversationChannel(row.channel)) {
     throw new Error(`invalid channel in conversation ${row.id}: ${row.channel}`);
@@ -109,6 +140,9 @@ export const toConversationSnapshot = (row: ConversationRow): ConversationSnapsh
     subject: row.subject,
     lastMessageAt: row.last_message_at,
     unreadCount: row.unread_count,
+    intentCurrent: row.intent_current,
+    lastDecision: readLastDecision(row.metadata),
+    assignedToHuman: readAssignedToHuman(row.metadata),
   };
 };
 

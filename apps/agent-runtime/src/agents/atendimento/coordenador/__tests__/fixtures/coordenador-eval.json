@@ -1,0 +1,302 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Bateria de eval do Coordenador de Atendimento — Sprint 1.2. Cada entry é uma mensagem PT-BR coloquial que deve ser classificada num intent específico. `llmResponse` é o texto JSON que o LLM mockado retorna em LLM_MOCK_MODE=replay (pra entries que NÃO são resolvidas pelo pre-classify determinístico). `preClassifyExpected` documenta o caminho esperado: 'social.*' → pre-classify; 'requer_humano' quando media não-texto; 'llm' quando classify roda.",
+  "entries": [
+    {
+      "id": "saudacao-01",
+      "content": "bom dia",
+      "mediaType": "text",
+      "preClassifyExpected": "social.saudacao",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "saudacao-02",
+      "content": "oi",
+      "mediaType": "text",
+      "preClassifyExpected": "social.saudacao",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "saudacao-03",
+      "content": "olá!",
+      "mediaType": "text",
+      "preClassifyExpected": "social.saudacao",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "saudacao-04",
+      "content": "boa noite",
+      "mediaType": "text",
+      "preClassifyExpected": "social.saudacao",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "saudacao-05",
+      "content": "opa, td bem?",
+      "mediaType": "text",
+      "preClassifyExpected": "social.saudacao",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "agradecimento-01",
+      "content": "obrigado!",
+      "mediaType": "text",
+      "preClassifyExpected": "social.agradecimento",
+      "expectedIntent": "social.agradecimento",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "despedida-01",
+      "content": "tchau!",
+      "mediaType": "text",
+      "preClassifyExpected": "social.despedida",
+      "expectedIntent": "social.despedida",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "despedida-02",
+      "content": "até mais",
+      "mediaType": "text",
+      "preClassifyExpected": "social.despedida",
+      "expectedIntent": "social.despedida",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "agradecimento-02",
+      "content": "valeu, obrigadão",
+      "mediaType": "text",
+      "preClassifyExpected": "social.agradecimento",
+      "expectedIntent": "social.agradecimento",
+      "expectedDecision": "respond_direct"
+    },
+    {
+      "id": "op-status-01",
+      "content": "Quando vence meu DAS de outubro? Não recebi o boleto ainda.",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.status_obrigacao\",\"confidence\":0.88,\"reasoning\":\"cliente pergunta sobre prazo de obrigação fiscal específica\"}",
+      "expectedIntent": "operacional.status_obrigacao",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "op-doc-01",
+      "content": "Recebi um boleto duplicado da prefeitura, podem dar uma olhada?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.duvida_geral\",\"confidence\":0.74,\"reasoning\":\"dúvida operacional não-regulatória\"}",
+      "expectedIntent": "operacional.duvida_geral",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "op-envio-01",
+      "content": "Vou enviar as NFs da semana hoje à tarde, ok?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.envio_documento\",\"confidence\":0.82,\"reasoning\":\"cliente informando envio de documento\"}",
+      "expectedIntent": "operacional.envio_documento",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "op-pendente-01",
+      "content": "Falta a comprovação do INSS de setembro? Vocês não me cobraram",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.documento_pendente\",\"confidence\":0.79,\"reasoning\":\"pergunta sobre pendência de documento previdenciário\"}",
+      "expectedIntent": "operacional.documento_pendente",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "op-status-02",
+      "content": "Como anda a apuração do mês? Já dá pra ver?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.status_obrigacao\",\"confidence\":0.71,\"reasoning\":\"cliente quer ponto de situação operacional\"}",
+      "expectedIntent": "operacional.status_obrigacao",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "regime-01",
+      "content": "Vale a pena eu mudar pra Lucro Presumido? Tô no Simples hoje",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.duvida_regime\",\"confidence\":0.85,\"reasoning\":\"pergunta direta sobre mudança de regime tributário\"}",
+      "expectedIntent": "operacional.duvida_regime",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "regime-02",
+      "content": "Tô considerando trocar de Simples pra Lucro Real esse ano",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.duvida_regime\",\"confidence\":0.80,\"reasoning\":\"sinaliza troca de regime tributário\"}",
+      "expectedIntent": "operacional.duvida_regime",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "regime-03",
+      "content": "Qual regime serve melhor pra mim? Faturo uns 200k por ano",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.duvida_regime\",\"confidence\":0.83,\"reasoning\":\"escolha entre regimes tributários\"}",
+      "expectedIntent": "operacional.duvida_regime",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "lead-01",
+      "content": "Oi, vocês cuidam de contabilidade pra MEI? Tô abrindo agora",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"comercial.lead_novo\",\"confidence\":0.88,\"reasoning\":\"lead novo perguntando sobre serviço\"}",
+      "expectedIntent": "comercial.lead_novo",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "lead-02",
+      "content": "Tô abrindo uma empresa de comércio, quero contratar contador",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"comercial.lead_novo\",\"confidence\":0.90,\"reasoning\":\"cliente prospect quer contratar serviço\"}",
+      "expectedIntent": "comercial.lead_novo",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "lead-03",
+      "content": "Quanto custa o serviço de contabilidade mensal de vocês?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"comercial.lead_novo\",\"confidence\":0.78,\"reasoning\":\"pergunta de preço típica de lead novo\"}",
+      "expectedIntent": "comercial.lead_novo",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "urgente-01",
+      "content": "URGENTE! Receita pediu documento e preciso responder hoje",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"urgente\",\"confidence\":0.95,\"reasoning\":\"palavra urgente + prazo regulatório iminente\"}",
+      "expectedIntent": "urgente",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "urgente-02",
+      "content": "Recebi uma intimação aqui, o que faço??",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"urgente\",\"confidence\":0.92,\"reasoning\":\"intimação é matéria sensível, escala humano\"}",
+      "expectedIntent": "urgente",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "urgente-03",
+      "content": "Multa apareceu no meu sefaz, preciso de ajuda agora",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"urgente\",\"confidence\":0.90,\"reasoning\":\"multa + urgência manifesta\"}",
+      "expectedIntent": "urgente",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "fora-escopo-01",
+      "content": "Vocês sabem o número da sefaz aí no estado?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"fora_escopo\",\"confidence\":0.68,\"reasoning\":\"pergunta administrativa pública, fora da operação do escritório\"}",
+      "expectedIntent": "fora_escopo",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "fora-escopo-02",
+      "content": "Cadê o cara do suporte? Não chama no zap",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"fora_escopo\",\"confidence\":0.72,\"reasoning\":\"reclamação difusa sobre canal de atendimento\"}",
+      "expectedIntent": "fora_escopo",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "fora-escopo-03",
+      "content": "Vocês acham que o Brasil ganha hoje? Hahaha",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"fora_escopo\",\"confidence\":0.95,\"reasoning\":\"mensagem completamente off-topic\"}",
+      "expectedIntent": "fora_escopo",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "admin-cobranca-01",
+      "content": "Não recebi a fatura desse mês de vocês",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"administrativo.cobranca\",\"confidence\":0.80,\"reasoning\":\"cobrança do próprio escritório\"}",
+      "expectedIntent": "administrativo.cobranca",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "admin-cadastro-01",
+      "content": "Mudei de endereço, preciso atualizar no cadastro",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"administrativo.cadastro\",\"confidence\":0.78,\"reasoning\":\"atualização cadastral do cliente no escritório\"}",
+      "expectedIntent": "administrativo.cadastro",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "admin-cobranca-02",
+      "content": "A fatura tá errada, podem corrigir?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"administrativo.cobranca\",\"confidence\":0.81,\"reasoning\":\"correção de fatura emitida pelo escritório\"}",
+      "expectedIntent": "administrativo.cobranca",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "ambig-confidence-low-01",
+      "content": "Tudo certo por aí? Algo que eu precise olhar?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"social.saudacao\",\"confidence\":0.55,\"reasoning\":\"pode ser social, pode ser check-in operacional — ambíguo\"}",
+      "expectedIntent": "social.saudacao",
+      "expectedDecision": "escalate_human",
+      "expectedPromoted": true
+    },
+    {
+      "id": "ambig-handoff-mid-01",
+      "content": "Tem um cliente meu reclamando do XML — vocês olharam?",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "{\"intent\":\"operacional.duvida_geral\",\"confidence\":0.68,\"reasoning\":\"dúvida operacional plausível — confidence média\"}",
+      "expectedIntent": "operacional.duvida_geral",
+      "expectedDecision": "handoff_specialist"
+    },
+    {
+      "id": "naotexto-01",
+      "content": "[audio enviado pelo cliente]",
+      "mediaType": "audio",
+      "preClassifyExpected": "requer_humano",
+      "expectedIntent": "requer_humano",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "naotexto-02",
+      "content": "[foto da nota anexa]",
+      "mediaType": "image",
+      "preClassifyExpected": "requer_humano",
+      "expectedIntent": "requer_humano",
+      "expectedDecision": "escalate_human"
+    },
+    {
+      "id": "llm-invalido-01",
+      "content": "Mensagem que faz o LLM quebrar o JSON",
+      "mediaType": "text",
+      "preClassifyExpected": "llm",
+      "llmResponse": "isso aqui não é JSON, é só texto solto",
+      "expectedIntent": "requer_humano",
+      "expectedDecision": "escalate_human"
+    }
+  ]
+}
