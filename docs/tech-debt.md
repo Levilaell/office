@@ -80,6 +80,20 @@ só itens identificados durante implementação que merecem revisita.
 **Impacto:** warning no install, mas Clerk funciona OK em runtime
 **Solução:** esperar próxima release de @clerk/nextjs com peer dep atualizada
 
+### TD-010 🟢 Naming inconsistente de ADRs 001-009 vs 010-017
+
+**Detectado em:** 2026-05-18 (durante criação dos ADRs 014-017)
+**Impacto:** cosmético — busca/grep em histórico fica ligeiramente fragmentada. ADRs 001-009 usam `ADR-NNN-titulo.md`; 010-017 usam `NNN-titulo.md` (sem prefixo). Convenção mais recente é a sem prefixo.
+**Solução:** renomear ADRs 001-009 pro padrão `NNN-titulo.md`. Atualizar referências em `docs/adrs/README.md`, `CLAUDE.md` e qualquer outro lugar que mencione por nome de arquivo.
+**Quando atacar:** quando houver outro motivo pra mexer em `docs/adrs/` (criação de novo ADR, refatoração de docs etc). Não justifica PR isolado.
+
+### TD-011 🟢 `docs/adrs/README.md` sem seções por status
+
+**Detectado em:** 2026-05-18 (durante criação dos ADRs 014-017)
+**Impacto:** estrutural — README atual lista ADRs sob `## Aceitos` mas não tem seções pra `superseded`, `depreciado` ou outros status. Quando o primeiro ADR mudar de status, o índice precisa crescer.
+**Solução:** refatorar README com seções por status (`## Aceitos`, `## Superseded`, `## Depreciados`). Eventualmente adotar tabela única com coluna de status se a lista crescer muito.
+**Quando atacar:** trigger é o primeiro ADR transitar pra status não-aceito. Não há valor em fazer antes.
+
 ---
 
 ## Itens fechados
