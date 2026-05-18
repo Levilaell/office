@@ -94,6 +94,48 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** após o merge desta PR, aplicar as 3 migrations no Supabase Cloud (`20260515103000_atendimento_foundations`, `20260518163051_rename_interactions_to_messages`, `20260518163548_conversations_intent_current`) e então rodar `pnpm db:types --linked` pra alinhar tipos com schema real. Commitar o resultado.
 **Quando atacar:** parte do processo operacional de merge desta PR. Idealmente antes de Sprint 1.1 começar a consumir os tipos.
 
+### TD-015 🟡 Eval do Coordenador roda em replay puro, sem accuracy de modelo real
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** `apps/agent-runtime/src/agents/atendimento/coordenador/__tests__/eval.test.ts` testa a pipeline (parse JSON + decide + ação) com 37 fixtures, mas o LLM é mockado. Mudança de prompt que degrada accuracy semântica NÃO é detectada por essa bateria — só estrutura é validada.
+**Solução:** workflow scheduled (diário/semanal) que roda eval com LLM real contra fixtures + cassettes gravados; threshold de regressão (ex: < 5% de queda em accuracy de classificação) reprova promoção de prompt.
+**Quando atacar:** Sprint 1.5+ (modo shadow + eval contínuo)
+
+### TD-016 🟢 Catálogo de intents do Atendimento é constante, não tabela `intents`
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** `packages/shared-domain/src/atendimento/intents.ts` define 15 intents como constante tipada. Tenants não podem customizar (adicionar/remover/redefinir defaultDecision). Suficiente pra Fase 1; vira gargalo quando escritórios pedirem taxonomia própria.
+**Solução:** migration cria tabela `intents` (tenant_id, slug, display_name, category, default_decision, target_agent_key, template_id, always_human, alwaysHuman). Seed inicial popula a constante atual. Catálogo passa a ser carregado por tenant.
+**Quando atacar:** primeiro tenant que pedir customização OU início da Fase 2
+
+### TD-017 🟡 UI de configuração de tier de autonomia ausente
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** `agents.autonomy_tier` é coluna no DB com default `sugestivo`. Sprint 1.2 lê (Coordenador apenas; sem efeito prático ainda) mas não há UI. Mudança de tier exige SQL direto.
+**Solução:** página `/dashboard/configuracoes/agentes` com lista de agentes do tenant + dropdown de tier (com permission check pra owner/manager). Mudança grava em `audit_log` com before/after.
+**Quando atacar:** Sprint 1.5 (modo shadow completo) — modo shadow precisa que operador alterne tiers facilmente pra observar comportamento
+
+### TD-018 🟡 `conversations` não tem coluna `assigned_to` nem status `waiting_human`
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** Sprint 1.2 marca conversation como aguardando humano via `metadata.assigned_to_human=true` em vez de mexer no CHECK constraint de `conversations.status`. Funciona mas força UI a olhar metadata; queries futuras tipo "todas as conversations aguardando humano" precisam ler metadata em vez de status.
+**Solução:** migration adiciona coluna `assigned_to UUID NULL REFERENCES users(id)` + amplia CHECK de status com `'waiting_human'`. Refactor de `act.ts` pra setar status + assigned_to em vez de patch metadata. Backfill: tudo com metadata.assigned_to_human=true vira status='waiting_human'.
+**Quando atacar:** Sprint 1.3 (quando especialista entrar) ou Sprint 1.5
+
+### TD-019 🟡 Coordenador subscreve `message.received` direto; ADR-016 prevê `message.routed`
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** ADR-016 desenhou 3 camadas (Roteador global → Coordenador → Especialista). Na Fase 1, com Atendimento como único departamento, Coordenador subscreve direto a `message.received` — Roteador não roda em mensagens inbound de canais externos (só na rota `/api/triagem`). Quando segundo departamento entrar (Fase 2), Coordenador atual vai roteamento erroneamente toda mensagem inbound como Atendimento.
+**Solução:** introduzir evento `message.routed` (publicado pelo Roteador após classificar departamento). Coordenadores subscrevem `message.routed` filtrando pelo destination_department. Worker de "ingest inbound → Roteador" entra na cadeia entre o canal e o Coordenador.
+**Quando atacar:** Sprint quando segundo departamento (provavelmente Pessoal ou Fiscal) for ativado — sem desvio na Fase 1 com 1 departamento
+
+### TD-020 🟢 Pre-classify determinístico é mínimo
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Impacto:** `pre-classify.ts` resolve só não-texto e saudações curtas. Mensagens com palavras-chave fortes de urgência ("multa", "intimação") ainda passam pelo LLM. Custo evitável.
+**Solução:** regex pra urgência crítica + classificação determinística pra `urgente`. Adicionar match de palavras-chave configuráveis por tenant na Fase 2.
+**Quando atacar:** Sprint 1.5+ quando análise de custo revelar volume de mensagens urgentes que justifique
+
 ---
 
 ## Itens fechados

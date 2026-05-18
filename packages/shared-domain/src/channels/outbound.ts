@@ -128,12 +128,10 @@ export const sendAgentMessage = async (
     session = toChannelSession(row);
   }
 
-  // Threading: reusa external_id da última inbound como reply marker pra
-  // canais que suportam (e-mail). Adapter ignora se não suporta.
-  const lastExternalId =
-    typeof conv.channel_handle === 'string'
-      ? await readLastInboundExternalId(supabase, input.conversationId)
-      : null;
+  // Threading: reusa external_id (vira In-Reply-To) + thread_id (vira
+  // References pro encadeamento longo) da última inbound. Adapter ignora
+  // se não suporta — só EmailAdapter usa hoje.
+  const lastThreading = await readLastInboundThreading(supabase, input.conversationId);
 
   const adapter = await getChannelAdapter(adapterChannel);
   const sendResult = await adapter.sendMessage({
@@ -142,7 +140,12 @@ export const sendAgentMessage = async (
     content: input.content,
     mediaType: 'text',
     ...(input.subject !== undefined && { subject: input.subject }),
-    ...(lastExternalId !== null && { replyToExternalMessageId: lastExternalId }),
+    ...(lastThreading.externalId !== null && {
+      replyToExternalMessageId: lastThreading.externalId,
+    }),
+    ...(lastThreading.threadId !== null && {
+      channelThreadId: lastThreading.threadId,
+    }),
   });
 
   if (sendResult.status === 'rejected') {
@@ -175,10 +178,10 @@ export const sendAgentMessage = async (
   return { ok: true, sendResult, messageId: message.id };
 };
 
-const readLastInboundExternalId = async (
+const readLastInboundThreading = async (
   supabase: ServiceRoleClient,
   conversationId: string,
-): Promise<string | null> => {
+): Promise<{ externalId: string | null; threadId: string | null }> => {
   const { data } = await supabase
     .from('messages')
     .select('metadata')
@@ -189,5 +192,9 @@ const readLastInboundExternalId = async (
     .maybeSingle();
   const meta = (data?.metadata as Record<string, unknown> | null) ?? null;
   const ext = meta?.external_id;
-  return typeof ext === 'string' ? ext : null;
+  const thread = meta?.thread_id;
+  return {
+    externalId: typeof ext === 'string' ? ext : null,
+    threadId: typeof thread === 'string' ? thread : null,
+  };
 };
