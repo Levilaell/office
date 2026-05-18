@@ -6,15 +6,15 @@ import type {
 } from '@office/shared-db';
 import type {
   ConversationChannel,
-  InteractionDirection,
+  MessageDirection,
   SenderType,
 } from '@office/shared-types';
 import { appendAuditLog } from '../audit/index';
 
 export type ConversationRow = Database['public']['Tables']['conversations']['Row'];
 export type ConversationInsert = Database['public']['Tables']['conversations']['Insert'];
-export type InteractionRow = Database['public']['Tables']['interactions']['Row'];
-export type InteractionInsert = Database['public']['Tables']['interactions']['Insert'];
+export type MessageRow = Database['public']['Tables']['messages']['Row'];
+export type MessageInsert = Database['public']['Tables']['messages']['Insert'];
 
 type AnyClient = AuthenticatedClient | ServiceRoleClient;
 
@@ -84,11 +84,11 @@ export const upsertConversation = async (
   return created.data;
 };
 
-export type AppendInteractionInput = {
+export type AppendMessageInput = {
   tenantId: string;
   conversationId: string;
   accountId: string;
-  direction: InteractionDirection;
+  direction: MessageDirection;
   senderType: SenderType;
   senderId: string | null;
   content: string;
@@ -110,19 +110,19 @@ const formatActor = (senderType: SenderType, senderId: string | null): string =>
 };
 
 /**
- * Insere uma interaction, atualiza last_message_at (e unread_count se
- * inbound) da conversation, e grava audit_log. Tudo no mesmo "tracid" pra
- * permitir correlação. unread_count só incrementa em mensagem inbound — uma
- * resposta outbound do operador/agente não conta como "não lida".
+ * Insere uma message, atualiza last_message_at (e unread_count se inbound)
+ * da conversation, e grava audit_log. Tudo no mesmo traceId pra permitir
+ * correlação. unread_count só incrementa em mensagem inbound — uma resposta
+ * outbound do operador/agente não conta como "não lida".
  */
-export const appendInteraction = async (
+export const appendMessage = async (
   supabase: AnyClient,
-  input: AppendInteractionInput,
-): Promise<InteractionRow> => {
+  input: AppendMessageInput,
+): Promise<MessageRow> => {
   const traceId = input.traceId ?? crypto.randomUUID();
   const metadata: Json = (input.metadata ?? {}) as Json;
 
-  const insert: InteractionInsert = {
+  const insert: MessageInsert = {
     tenant_id: input.tenantId,
     account_id: input.accountId,
     conversation_id: input.conversationId,
@@ -133,12 +133,12 @@ export const appendInteraction = async (
     metadata,
   };
   const inserted = await supabase
-    .from('interactions')
+    .from('messages')
     .insert(insert)
     .select()
     .single();
   if (inserted.error) throw inserted.error;
-  const interaction = inserted.data;
+  const message = inserted.data;
 
   // Bumpa last_message_at sempre; unread_count só pra inbound.
   if (input.direction === 'inbound') {
@@ -155,7 +155,7 @@ export const appendInteraction = async (
     const { error: upErr } = await supabase
       .from('conversations')
       .update({
-        last_message_at: interaction.created_at,
+        last_message_at: message.created_at,
         unread_count: nextUnread,
       })
       .eq('id', input.conversationId);
@@ -163,7 +163,7 @@ export const appendInteraction = async (
   } else {
     const { error: upErr } = await supabase
       .from('conversations')
-      .update({ last_message_at: interaction.created_at })
+      .update({ last_message_at: message.created_at })
       .eq('id', input.conversationId);
     if (upErr) throw upErr;
   }
@@ -173,8 +173,8 @@ export const appendInteraction = async (
     tenant_id: input.tenantId,
     account_id: input.accountId,
     actor: formatActor(input.senderType, input.senderId),
-    action: 'interaction.created',
-    resource: `interaction:${interaction.id}`,
+    action: 'message.created',
+    resource: `message:${message.id}`,
     metadata: {
       conversationId: input.conversationId,
       direction: input.direction,
@@ -183,7 +183,7 @@ export const appendInteraction = async (
     } as Json,
   });
 
-  return interaction;
+  return message;
 };
 
 export type ListConversationsFilters = {

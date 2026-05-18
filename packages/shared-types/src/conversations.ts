@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
 // Sprint 1.0 — Atendimento foundations
 //
-// Espelha os CHECKs da migration 20260515103000_atendimento_foundations.sql.
+// Espelha os CHECKs da migration 20260515103000_atendimento_foundations.sql
+// + rename 20260518163051_rename_interactions_to_messages.sql.
 // Type guards isXxx pra usar em mappers de runtime (DB → snapshot).
 // -----------------------------------------------------------------------------
 
@@ -25,10 +26,10 @@ export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
 export const isConversationStatus = (value: unknown): value is ConversationStatus =>
   typeof value === 'string' && (CONVERSATION_STATUSES as readonly string[]).includes(value);
 
-export const INTERACTION_DIRECTIONS = ['inbound', 'outbound'] as const;
-export type InteractionDirection = (typeof INTERACTION_DIRECTIONS)[number];
-export const isInteractionDirection = (value: unknown): value is InteractionDirection =>
-  typeof value === 'string' && (INTERACTION_DIRECTIONS as readonly string[]).includes(value);
+export const MESSAGE_DIRECTIONS = ['inbound', 'outbound'] as const;
+export type MessageDirection = (typeof MESSAGE_DIRECTIONS)[number];
+export const isMessageDirection = (value: unknown): value is MessageDirection =>
+  typeof value === 'string' && (MESSAGE_DIRECTIONS as readonly string[]).includes(value);
 
 export const SENDER_TYPES = ['end_client', 'agent', 'operator', 'system'] as const;
 export type SenderType = (typeof SENDER_TYPES)[number];
@@ -50,12 +51,12 @@ export type Conversation = {
   updatedAt: string;
 };
 
-export type Interaction = {
+export type Message = {
   id: string;
   tenantId: string;
   accountId: string;
   conversationId: string;
-  direction: InteractionDirection;
+  direction: MessageDirection;
   senderType: SenderType;
   // user_id, agent_id, ou null pra end_client externo (channel_handle identifica).
   senderId: string | null;

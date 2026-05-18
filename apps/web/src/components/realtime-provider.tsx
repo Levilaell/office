@@ -124,14 +124,14 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
       socket.on('approval.created', onApprovalEvent);
       socket.on('approval.resolved', onApprovalEvent);
 
-      // interaction.received: refetch a lista de conversations abertas.
+      // message.received: refetch a lista de conversations abertas.
       // Delta merge fica pra TD-003 junto com o refactor geral de deltas.
-      const onInteractionReceived = () => {
+      const onMessageReceived = () => {
         refetchConversations()
           .then(replaceConversations)
           .catch((err) => console.error('[realtime] refetch conversations', err));
       };
-      socket.on('interaction.received', onInteractionReceived);
+      socket.on('message.received', onMessageReceived);
 
       socketRef.current = socket;
     })().catch((err) => {

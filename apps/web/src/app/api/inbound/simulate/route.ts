@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  appendInteraction,
+  appendMessage,
   getTenantByClerkOrgId,
   upsertConversation,
 } from '@office/shared-domain';
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       ...(parsed.data.subject && { subject: parsed.data.subject }),
     });
 
-    const interaction = await appendInteraction(supabase, {
+    const message = await appendMessage(supabase, {
       tenantId: tenant.id,
       conversationId: conversation.id,
       accountId: parsed.data.accountId,
@@ -70,24 +70,24 @@ export async function POST(req: NextRequest) {
     });
 
     await publishEvent(
-      'interaction.received',
+      'message.received',
       `tenant:${tenant.id}`,
       {
         tenantId: tenant.id,
         accountId: parsed.data.accountId,
         conversationId: conversation.id,
-        interactionId: interaction.id,
+        messageId: message.id,
         channel: 'simulated_webhook' as const,
       },
       traceId,
     );
 
     return NextResponse.json(
-      { conversationId: conversation.id, interactionId: interaction.id, traceId },
+      { conversationId: conversation.id, messageId: message.id, traceId },
       { status: 202 },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const errMsg = err instanceof Error ? err.message : 'unknown error';
+    return NextResponse.json({ error: errMsg }, { status: 500 });
   }
 }

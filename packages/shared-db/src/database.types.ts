@@ -392,7 +392,7 @@ export type Database = {
           },
         ]
       }
-      interactions: {
+      messages: {
         Row: {
           account_id: string
           content: string
@@ -431,21 +431,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "interactions_account_id_fkey"
+            foreignKeyName: "messages_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "interactions_conversation_id_fkey"
+            foreignKeyName: "messages_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "interactions_tenant_id_fkey"
+            foreignKeyName: "messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

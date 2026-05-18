@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FakeSupabase } from './fake-supabase';
 import {
-  appendInteraction,
+  appendMessage,
   listConversations,
   upsertConversation,
 } from '../index';
@@ -78,7 +78,7 @@ describe('upsertConversation', () => {
   });
 });
 
-describe('appendInteraction', () => {
+describe('appendMessage', () => {
   let fake: FakeSupabase;
   let convId: string;
 
@@ -93,8 +93,8 @@ describe('appendInteraction', () => {
     convId = conv.id;
   });
 
-  it('inbound: insere interaction, bumpa last_message_at e incrementa unread_count', async () => {
-    const ix = await appendInteraction(asClient(fake), {
+  it('inbound: insere message, bumpa last_message_at e incrementa unread_count', async () => {
+    const ix = await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -106,14 +106,14 @@ describe('appendInteraction', () => {
 
     expect(ix.direction).toBe('inbound');
     expect(ix.sender_type).toBe('end_client');
-    expect(fake.tables.interactions).toHaveLength(1);
+    expect(fake.tables.messages).toHaveLength(1);
 
     const conv = fake.tables.conversations[0];
     expect(conv?.unread_count).toBe(1);
     expect(conv?.last_message_at).toBe(ix.created_at);
 
     // segunda mensagem inbound: unread continua subindo
-    await appendInteraction(asClient(fake), {
+    await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -126,7 +126,7 @@ describe('appendInteraction', () => {
   });
 
   it('outbound: bumpa last_message_at mas NÃO incrementa unread_count', async () => {
-    await appendInteraction(asClient(fake), {
+    await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -138,7 +138,7 @@ describe('appendInteraction', () => {
     const afterInbound = fake.tables.conversations[0]?.unread_count;
     expect(afterInbound).toBe(1);
 
-    const reply = await appendInteraction(asClient(fake), {
+    const reply = await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -154,7 +154,7 @@ describe('appendInteraction', () => {
   });
 
   it('grava audit_log com actor formatado por senderType e metadata', async () => {
-    await appendInteraction(asClient(fake), {
+    await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -168,15 +168,15 @@ describe('appendInteraction', () => {
     expect(fake.tables.audit_log).toHaveLength(1);
     const log = fake.tables.audit_log[0];
     expect(log?.actor).toBe('end_client');
-    expect(log?.action).toBe('interaction.created');
-    expect((log?.resource as string)).toMatch(/^interaction:/);
+    expect(log?.action).toBe('message.created');
+    expect((log?.resource as string)).toMatch(/^message:/);
     expect((log?.metadata as Record<string, unknown>).simulated).toBe(true);
     expect((log?.metadata as Record<string, unknown>).senderType).toBe('end_client');
     expect((log?.metadata as Record<string, unknown>).direction).toBe('inbound');
   });
 
   it('actor reflete senderType+senderId pra agent e operator', async () => {
-    await appendInteraction(asClient(fake), {
+    await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,
@@ -185,7 +185,7 @@ describe('appendInteraction', () => {
       senderId: 'agent_xyz',
       content: 'msg do agente',
     });
-    await appendInteraction(asClient(fake), {
+    await appendMessage(asClient(fake), {
       tenantId: TENANT_A,
       conversationId: convId,
       accountId: ACCOUNT_A,

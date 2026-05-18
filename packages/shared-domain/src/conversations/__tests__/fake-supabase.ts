@@ -28,7 +28,7 @@ const DEFAULTS_BY_TABLE: Record<string, Record<string, unknown>> = {
     last_message_at: null,
     subject: null,
   },
-  interactions: {
+  messages: {
     metadata: {},
   },
 };
@@ -42,14 +42,14 @@ const isMatch = (row: Row, filters: Array<[string, unknown]>): boolean => {
 
 export type FakeTables = {
   conversations: Row[];
-  interactions: Row[];
+  messages: Row[];
   audit_log: Row[];
 } & Record<string, Row[]>;
 
 export class FakeSupabase {
   tables: FakeTables = {
     conversations: [],
-    interactions: [],
+    messages: [],
     audit_log: [],
   };
   // Permite verificar chamadas em testes.
