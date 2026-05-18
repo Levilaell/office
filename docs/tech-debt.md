@@ -71,6 +71,22 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** refatorar README com seções por status (`## Aceitos`, `## Superseded`, `## Depreciados`). Eventualmente adotar tabela única com coluna de status se a lista crescer muito.
 **Quando atacar:** trigger é o primeiro ADR transitar pra status não-aceito. Não há valor em fazer antes.
 
+### TD-013 🟡 Webpack Next.js não resolve imports relativos com extensão .js em shared-domain
+
+**Detectado em:** CI de main após merge do Sprint 1.0 aligned (commit 3e3cfad)
+**Impacto:** build de produção quebra; passa typecheck/lint/test porque vitest e tsx aceitam .js
+**Solução temporária:** removidos `.js` dos imports relativos em `packages/shared-domain/src/triagem/index.ts` (hotfix fix/triagem-import-extensions)
+**Causa raiz:** moduleResolution config divergente entre runtime (NodeNext em alguns lugares, Bundler em outros) e o que webpack do Next.js espera
+**Quando atacar:** próximo sprint que tocar config TS dos packages — alinhar moduleResolution em todo o monorepo (provavelmente Bundler em todos)
+
+### TD-014 🟢 CI do PR #2 (Sprint 1.0-prep) não pegou quebra de build introduzida lá
+
+**Detectado em:** mesmo commit do TD-013
+**Impacto:** quebra só apareceu em main, no CI pós-merge
+**Causa provável:** `apps/web/src/app/dashboard/page.tsx` não importava de `shared-domain` no momento do PR #2; o Sprint 1.0 aligned (PR #3) introduziu o import. Build do PR #3 também passou em algum momento — investigar histórico de Actions pra entender quando virou vermelho.
+**Solução:** investigar histórico CI do PR #2 e PR #3. Se confirmado que `pnpm build` não rodou ou passou por config errada, ajustar CI.
+**Quando atacar:** próxima sessão de manutenção de CI
+
 ### TD-012 🟡 `database.types.ts` editado à mão; precisa regenerar via `pnpm db:types`
 
 **Detectado em:** Sprint 1.0 finalização (2026-05-18)

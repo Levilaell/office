@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import type { Json, ServiceRoleClient } from '@office/shared-db';
 import { enqueueAgentTask } from '@office/shared-events';
-import { getRouterForTenant } from '../agents/index.js';
-import { recordTaskLifecycle } from '../audit/index.js';
-import { createTask } from '../tasks/index.js';
+import { getRouterForTenant } from '../agents';
+import { recordTaskLifecycle } from '../audit';
+import { createTask } from '../tasks';
 
 /**
  * Triagem: ponto de entrada único pra qualquer mensagem externa virar uma
