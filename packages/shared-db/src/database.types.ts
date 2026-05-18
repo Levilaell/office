@@ -767,6 +767,98 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          assigned_to_user_id: string | null
+          converted_at: string | null
+          converted_to_account_id: string | null
+          created_at: string
+          estimated_value_monthly: number | null
+          id: string
+          lost_reason: string | null
+          notes: string | null
+          primary_contact_id: string | null
+          primary_conversation_id: string | null
+          qualification_data: Json
+          qualified_at: string | null
+          scheduled_call_at: string | null
+          source: string
+          source_metadata: Json
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_user_id?: string | null
+          converted_at?: string | null
+          converted_to_account_id?: string | null
+          created_at?: string
+          estimated_value_monthly?: number | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          primary_contact_id?: string | null
+          primary_conversation_id?: string | null
+          qualification_data?: Json
+          qualified_at?: string | null
+          scheduled_call_at?: string | null
+          source: string
+          source_metadata?: Json
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_user_id?: string | null
+          converted_at?: string | null
+          converted_to_account_id?: string | null
+          created_at?: string
+          estimated_value_monthly?: number | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          primary_contact_id?: string | null
+          primary_conversation_id?: string | null
+          qualification_data?: Json
+          qualified_at?: string | null
+          scheduled_call_at?: string | null
+          source?: string
+          source_metadata?: Json
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_user_id_fkey"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_converted_to_account_id_fkey"
+            columns: ["converted_to_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_primary_conversation_id_fkey"
+            columns: ["primary_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_drafts: {
         Row: {
           agent_id: string

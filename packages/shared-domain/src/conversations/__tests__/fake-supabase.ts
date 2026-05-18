@@ -78,6 +78,22 @@ const DEFAULTS_BY_TABLE: Record<string, Record<string, unknown>> = {
     description: null,
     entity_id: null,
   },
+  // Sprint 1.4 — leads. Espelha colunas da migration.
+  leads: {
+    status: 'new',
+    qualification_data: {},
+    source_metadata: {},
+    primary_contact_id: null,
+    primary_conversation_id: null,
+    estimated_value_monthly: null,
+    notes: null,
+    assigned_to_user_id: null,
+    converted_to_account_id: null,
+    qualified_at: null,
+    scheduled_call_at: null,
+    converted_at: null,
+    lost_reason: null,
+  },
 };
 
 // Sprint 1.3 — filtros estendidos pra suportar `gte`, `lte`, `in` usados

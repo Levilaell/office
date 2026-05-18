@@ -59,3 +59,40 @@ export {
   type DocumentSnapshot,
   type InteractionSnapshot,
 } from './tools/index';
+
+// Sprint 1.4 — Especialista Comercial (qualificação de leads)
+export {
+  // repositório
+  computeNextStatus,
+  createLead,
+  getLeadById,
+  getLeadByConversationId,
+  listLeadsByTenant,
+  markLeadDropped,
+  markLeadLost,
+  markLeadQualified,
+  markLeadScheduledPending,
+  updateLeadQualificationData,
+  type CreateLeadInput,
+  type LeadInsert,
+  type LeadRow,
+  type LeadSource,
+  type LeadStatus,
+  type LeadUpdate,
+  type ListLeadsFilters,
+  type MarkLeadResult,
+  type UpdateLeadQualificationResult,
+  // slots
+  CORE_SLOTS,
+  SLOT_ORDER,
+  SLOT_QUESTIONS,
+  getMissingSlots,
+  getNextSuggestedSlot,
+  getRequiredSlots,
+  isQualified,
+  renderSlotQuestion,
+  type CompanySizeEstimate,
+  type CurrentRegime,
+  type DecisionTimeline,
+  type LeadSlots,
+} from './leads/index';
