@@ -959,7 +959,7 @@ export type Database = {
           payment_code: string | null
           payment_link: string | null
           payment_method: string | null
-          reference_period: unknown | null
+          reference_period: unknown
           status: string
           tenant_id: string
           type: string
@@ -982,7 +982,7 @@ export type Database = {
           payment_code?: string | null
           payment_link?: string | null
           payment_method?: string | null
-          reference_period?: unknown | null
+          reference_period?: unknown
           status?: string
           tenant_id: string
           type: string
@@ -1005,7 +1005,7 @@ export type Database = {
           payment_code?: string | null
           payment_link?: string | null
           payment_method?: string | null
-          reference_period?: unknown | null
+          reference_period?: unknown
           status?: string
           tenant_id?: string
           type?: string
