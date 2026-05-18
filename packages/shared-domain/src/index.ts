@@ -28,3 +28,4 @@ export * from './approvals/index';
 export * from './triagem/index';
 export * from './conversations/index';
 export * from './channels/index';
+export * from './atendimento/index';
