@@ -24,8 +24,7 @@ import { z } from 'zod';
 import type { AgentContext } from '../../types.js';
 import { decide, type DecideResult } from './decide.js';
 import { preClassify, type PreClassifyResult } from './pre-classify.js';
-import { renderConversationHistory, type CoordenadorContext } from './tools/context.js';
-import { renderIntentsForPrompt } from './tools/intent-rendering.js';
+import type { CoordenadorContext } from './tools/context.js';
 
 export const CLASSIFICATION_SCHEMA = z.object({
   intent: z.string().min(1),
