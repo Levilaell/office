@@ -21,6 +21,12 @@ export {
 export { getChannelAdapter } from './registry';
 
 export {
+  ingestNormalizedMessages,
+  type IngestNormalizedMessagesInput,
+  type IngestedMessage,
+} from './ingest';
+
+export {
   getActiveChannelSessionsForTenant,
   getChannelSession,
   getChannelSessionsByChannel,

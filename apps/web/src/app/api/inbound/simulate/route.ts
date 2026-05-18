@@ -1,25 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  appendMessage,
+  getChannelAdapter,
   getTenantByClerkOrgId,
-  upsertConversation,
+  ingestNormalizedMessages,
 } from '@office/shared-domain';
-import { publishEvent } from '@office/shared-events';
 import { getCurrentAuthContext } from '@/lib/auth';
 import { getServiceRoleSupabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Webhook simulado. Em Sprint 1.3 entram canais reais (email/WhatsApp) sem
+// Webhook simulado. Em Sprint 1.3 entram canais reais (Evolution, etc) sem
 // auth, validados por signature HMAC. Aqui, autenticado via Clerk — operador
 // dispara manualmente pra testar o fluxo end-to-end.
+//
+// O caminho passa pelo ChannelAdapter agora (Sprint 1.1):
+//   route → SimulatedWebhookAdapter.normalizeInbound → ingestNormalizedMessages
+// que escreve conversations + messages, audita e publica `message.received`.
 const BodySchema = z.object({
   accountId: z.string().uuid(),
   channelHandle: z.string().min(1).max(200),
   subject: z.string().min(1).max(200).optional(),
-  content: z.string().min(1).max(5000),
+  content: z.string().min(1).max(10_000),
 });
 
 export async function POST(req: NextRequest) {
@@ -42,48 +45,45 @@ export async function POST(req: NextRequest) {
   }
 
   const traceId = crypto.randomUUID();
+  const { accountId, ...adapterPayload } = parsed.data;
 
   try {
-    const conversation = await upsertConversation(supabase, {
-      tenantId: tenant.id,
-      accountId: parsed.data.accountId,
-      channel: 'simulated_webhook',
-      channelHandle: parsed.data.channelHandle,
-      ...(parsed.data.subject && { subject: parsed.data.subject }),
-    });
+    const adapter = await getChannelAdapter('simulated_webhook');
+    const normalized = adapter.normalizeInbound(adapterPayload);
 
-    const message = await appendMessage(supabase, {
-      tenantId: tenant.id,
-      conversationId: conversation.id,
-      accountId: parsed.data.accountId,
-      direction: 'inbound',
-      senderType: 'end_client',
-      senderId: null,
-      content: parsed.data.content,
-      traceId,
-      metadata: {
-        channel: 'simulated_webhook',
-        channelHandle: parsed.data.channelHandle,
+    // Enriquece metadata com triggered_by — auditável pra rastrear quem
+    // disparou o webhook simulado.
+    const enriched = normalized.map((msg) => ({
+      ...msg,
+      rawPayload: {
+        ...(msg.rawPayload ?? {}),
         simulated: true,
         triggered_by_user_id: auth.userId,
       },
+    }));
+
+    const results = await ingestNormalizedMessages(supabase, {
+      tenantId: tenant.id,
+      accountId,
+      channel: 'simulated_webhook',
+      sessionId: null,
+      messages: enriched,
+      traceId,
     });
 
-    await publishEvent(
-      'message.received',
-      `tenant:${tenant.id}`,
-      {
-        tenantId: tenant.id,
-        accountId: parsed.data.accountId,
-        conversationId: conversation.id,
-        messageId: message.id,
-        channel: 'simulated_webhook' as const,
-      },
-      traceId,
-    );
-
+    const first = results[0];
+    if (!first) {
+      return NextResponse.json(
+        { error: 'no messages ingested' },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
-      { conversationId: conversation.id, messageId: message.id, traceId },
+      {
+        conversationId: first.conversation.id,
+        messageId: first.message.id,
+        traceId,
+      },
       { status: 202 },
     );
   } catch (err) {
