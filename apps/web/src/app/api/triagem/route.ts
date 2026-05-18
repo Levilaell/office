@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
+import { enqueueTriagem, getTenantByClerkOrgId } from '@office/shared-domain';
 import { getCurrentAuthContext } from '@/lib/auth';
-import { getTenantByClerkOrgId } from '@office/shared-domain';
-import { enqueueTriagem } from '@/lib/triagem';
 import { getServiceRoleSupabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +32,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await enqueueTriagem({
+    const result = await enqueueTriagem(supabase, {
       tenantId: tenant.id,
-      userId: auth.userId,
+      actor: auth.userId,
       text: parsed.data.text,
       ...(parsed.data.accountId && { accountId: parsed.data.accountId }),
     });

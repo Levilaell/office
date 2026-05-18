@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
   appendAuditLog,
+  ApprovalRaceConditionError,
   decideApproval,
   getApprovalById,
   getUserByClerkUserId,
@@ -139,13 +140,28 @@ export async function POST(
           ...(body.justification && { justification: body.justification }),
         };
 
-  const updated = await decideApproval(supabase, approvalId, {
-    status,
-    decision: decisionPayload as Json,
-    reviewerUserId,
-  });
-  if (!updated) {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
+  let updated: Approval;
+  try {
+    updated = await decideApproval(supabase, approvalId, {
+      status,
+      decision: decisionPayload as Json,
+      reviewerUserId,
+    });
+  } catch (err) {
+    if (err instanceof ApprovalRaceConditionError) {
+      // Race detectada pelo UPDATE atômico — outro reviewer ganhou.
+      // 409 sinaliza "conflito de estado" pro client. NÃO logamos em audit
+      // como "decisão rejeitada" — é falha técnica de concorrência, não
+      // decisão de negócio. O audit do vencedor cobre o histórico real.
+      console.warn(
+        `[approvals.decide] race: approval=${approvalId} trace=${before.trace_id} user=${auth.userId}`,
+      );
+      return NextResponse.json(
+        { error: 'approval_already_resolved', approvalId },
+        { status: 409 },
+      );
+    }
+    throw err;
   }
 
   await appendAuditLog(supabase, {

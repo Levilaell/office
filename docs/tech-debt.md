@@ -13,21 +13,6 @@ só itens identificados durante implementação que merecem revisita.
 
 ## Itens abertos
 
-### TD-001 🟡 `enqueueTriagem` faz 2 writes na tabela tasks
-
-**Detectado em:** Sprint 0.3c (commit e447a43)
-**Impacto:** dobra writes desnecessários; race window pequena entre create e assignTask
-**Solução:** combinar em INSERT único com `assigned_agent_id` já preenchido
-**Estimativa:** trivial (~30min)
-
-### TD-002 🟡 `incrementRunUsage` varre `agent_messages.content` em vez de accumulator
-
-**Detectado em:** Sprint 0.3c
-**Impacto:** funciona pra single-call mas vai falhar/imprecisar quando agentes fizerem multi-call (ex: Sonnet com tool use iterativo)
-**Solução:** adicionar `usage` e `costUsd` accumulator explícito no AgentContext, propagado pelo wrapper de LLM
-**Estimativa:** médio (~2h)
-**Bloqueador:** entra obrigatoriamente na Sprint 0.4 (primeiro agente multi-call)
-
 ### TD-003 🟡 Eventos `task.*` e `approval.*` carregam delta, não snapshot
 
 **Detectado em:** Sprint 0.3d-A (commit 21be719)
@@ -35,14 +20,6 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** migrar payloads pra carregar snapshot completo da entidade afetada; permite mergear delta no store sem refetch
 **Estimativa:** médio (~4h) — requer atualizar schemas em shared-events + producers em agent-runtime + consumers no provider
 **Quando atacar:** quando demo pro sócio mostrar fila de >50 approvals OU quando latência de update virar reclamação
-
-### TD-004 🔴 `decideApproval` sem `eq('status', 'pending')` no UPDATE
-
-**Detectado em:** Sprint 0.3d-B (relatório do CC)
-**Impacto:** race em decisões concorrentes (2 reviewers clicam aprovar ao mesmo tempo); aceitável pra MVP single-reviewer mas vira bug real em demo multi-user
-**Solução:** adicionar filtro no UPDATE + checar `rowsAffected`; se 0, retornar erro "approval já decidido"
-**Estimativa:** trivial (~30min)
-**Prioridade:** fechar antes de demo pro sócio
 
 ### TD-005 🟢 Script `scripts/seed-existing-tenants.ts` aponta pra URL errada
 
@@ -98,4 +75,22 @@ só itens identificados durante implementação que merecem revisita.
 
 ## Itens fechados
 
-(quando fechar um TD, mover pra cá com data e link de commit)
+### TD-002 ✅ `incrementRunUsage` varria `agent_messages.content` em vez de accumulator
+
+**Detectado em:** Sprint 0.3c
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** invertida a estratégia — o agente acumula tokens/custo direto após cada `llmCall` chamando `incrementRunUsage` (agora com signature por objeto: `{ turns?, tokensIn, tokensOut, costUsd }`, turns default = 1). Worker em `agent-runtime/workers/agent-tasks.ts` deixou de escanear `agent_messages`. Semântica de `turns` formalizada como "número de chamadas de LLM no run", coerente com `agents.budget.maxTurns`. Função agora throwa `RunNotFoundError` em vez de retornar null silenciosamente — tokens perdidos viram bug invisível de billing. Testes em `packages/shared-domain/src/runs/__tests__/increment-run-usage.test.ts` cobrem soma sequencial, default de turns, runs ausentes.
+
+**Residual:** read-modify-write não é atômico em multi-writer. Aceitável hoje porque runs são single-threaded por design (1 worker BullMQ processa 1 run por vez). Atomicidade real exigiria função Postgres + migration — registrado como caminho futuro mas sem TD ativo enquanto runs forem single-threaded.
+
+### TD-001 ✅ `enqueueTriagem` fazia 2 writes na tabela tasks
+
+**Detectado em:** Sprint 0.3c (commit e447a43)
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** `createTask` em `packages/shared-domain/src/tasks/index.ts` ganhou campo opcional `assignedAgentId`; quando presente, o INSERT já popula `assigned_agent_id` e seta `status='assigned'`. `enqueueTriagem` (agora em `packages/shared-domain/src/triagem/index.ts`) usa o novo campo — 1 write em vez de 2. Audit ainda registra `task.created` E `task.assigned` separadamente porque são duas transições lógicas; colapsar perderia informação no histórico.
+
+### TD-004 ✅ `decideApproval` sem `eq('status', 'pending')` no UPDATE
+
+**Detectado em:** Sprint 0.3d-B
+**Fechado em:** Sprint 1.0-prep (2026-05-18)
+**Solução aplicada:** `packages/shared-domain/src/approvals/index.ts` agora aplica `.eq('status','pending')` no UPDATE e lança `ApprovalRaceConditionError` se zero rows. Endpoint `POST /api/approvals/[id]/decide` traduz o erro pra HTTP 409 com body `{ error: 'approval_already_resolved', approvalId }`. Testes em `packages/shared-domain/src/approvals/__tests__/decide-approval.test.ts`.

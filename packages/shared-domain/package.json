@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@office/shared-db": "workspace:*",
+    "@office/shared-events": "workspace:*",
     "@office/shared-llm": "workspace:*",
-    "@office/shared-types": "workspace:*"
+    "@office/shared-types": "workspace:*",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

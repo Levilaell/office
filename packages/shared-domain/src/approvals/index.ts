@@ -89,11 +89,28 @@ export type DecideApprovalInput = {
   reviewerUserId: string | null;
 };
 
+/**
+ * Lançada quando um decideApproval atinge zero rows — alguma outra requisição
+ * já tirou a approval de `pending` entre o nosso SELECT e o UPDATE. Caller
+ * traduz pra HTTP 409. Fecha TD-004.
+ */
+export class ApprovalRaceConditionError extends Error {
+  override readonly name = 'ApprovalRaceConditionError';
+  constructor(public readonly approvalId: string) {
+    super(`approval ${approvalId} já foi decidida por outra requisição`);
+  }
+}
+
 export const decideApproval = async (
   supabase: AnyClient,
   approvalId: string,
   { status, decision, reviewerUserId }: DecideApprovalInput,
-): Promise<Approval | null> => {
+): Promise<Approval> => {
+  // Filtro `.eq('status', 'pending')` é a barreira atômica contra race:
+  // dois reviewers clicando ao mesmo tempo entram aqui, mas só o primeiro
+  // UPDATE encontra status=pending — o segundo retorna zero linhas e vira
+  // ApprovalRaceConditionError pro caller. Sem isso, o segundo silently
+  // sobrescreve a decisão do primeiro.
   const { data, error } = await supabase
     .from('approvals')
     .update({
@@ -103,8 +120,10 @@ export const decideApproval = async (
       decided_at: new Date().toISOString(),
     })
     .eq('id', approvalId)
+    .eq('status', 'pending')
     .select()
     .maybeSingle();
   if (error) throw error;
+  if (!data) throw new ApprovalRaceConditionError(approvalId);
   return data;
 };

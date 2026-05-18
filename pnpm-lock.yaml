@@ -266,12 +266,18 @@ importers:
       '@office/shared-db':
         specifier: workspace:*
         version: link:../shared-db
+      '@office/shared-events':
+        specifier: workspace:*
+        version: link:../shared-events
       '@office/shared-llm':
         specifier: workspace:*
         version: link:../shared-llm
       '@office/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.6.3

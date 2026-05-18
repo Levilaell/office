@@ -1,5 +1,9 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
-import { appendLlmAuditLog, type Json } from '@office/shared-domain';
+import {
+  appendLlmAuditLog,
+  incrementRunUsage,
+  type Json,
+} from '@office/shared-domain';
 import { llmCall } from '@office/shared-llm';
 import { routerPrompt } from '@office/shared-prompts';
 import { z } from 'zod';
@@ -104,6 +108,17 @@ export const buildRouterGraph = (ctx: AgentContext) => {
         promptVersion: `${routerPrompt.id}@${routerPrompt.version}`,
       },
       budget: { maxTokens: 1500, maxCostUsd: 0.02 },
+    });
+
+    // Acumula turns/tokens/custo IMEDIATAMENTE após o llmCall — billable,
+    // tem que ser registrado mesmo se audit ou recordMessage falharem em
+    // seguida. Substitui o scan post-mortem de agent_messages que o worker
+    // fazia antes (TD-002): aquele padrão quebrava em multi-call e dependia
+    // do shape exato do JSON em `content`.
+    await incrementRunUsage(ctx.supabase, ctx.runId, {
+      tokensIn: out.usage.inputTokens,
+      tokensOut: out.usage.outputTokens,
+      costUsd: out.costUsd,
     });
 
     await appendLlmAuditLog(ctx.supabase, out, {
