@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@office/shared-events', () => ({
+  publishEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { publishEvent } from '@office/shared-events';
 import { FakeSupabase } from './fake-supabase';
 import {
   getActiveChannelSessionsForTenant,
@@ -164,7 +170,11 @@ describe('getChannelSessionsByChannel', () => {
 });
 
 describe('updateChannelSessionStatus', () => {
-  it('transiciona status, grava audit_log com before/after, retorna previousStatus', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('transiciona status, grava audit_log, publica evento, retorna previousStatus', async () => {
     const fake = new FakeSupabase();
     const session = await upsertChannelSession(asClient(fake), {
       tenantId: TENANT_A,
@@ -188,9 +198,23 @@ describe('updateChannelSessionStatus', () => {
     expect(log?.resource).toBe(`channel_session:${session.id}`);
     expect((log?.before as { status: string }).status).toBe('disconnected');
     expect((log?.after as { status: string }).status).toBe('connected');
+
+    // Publica evento pra UI realtime.
+    expect(publishEvent).toHaveBeenCalledTimes(1);
+    const [eventType, channel, payload] = (publishEvent as ReturnType<typeof vi.fn>).mock
+      .calls[0]!;
+    expect(eventType).toBe('channel_session.status_changed');
+    expect(channel).toBe(`tenant:${TENANT_A}`);
+    expect(payload).toMatchObject({
+      sessionId: session.id,
+      tenantId: TENANT_A,
+      channel: 'email_imap',
+      previousStatus: 'disconnected',
+      status: 'connected',
+    });
   });
 
-  it('não grava audit_log se status não mudou', async () => {
+  it('não grava audit_log nem publica evento se status não mudou', async () => {
     const fake = new FakeSupabase();
     const session = await upsertChannelSession(asClient(fake), {
       tenantId: TENANT_A,
@@ -205,6 +229,7 @@ describe('updateChannelSessionStatus', () => {
     });
 
     expect(fake.tables.audit_log).toHaveLength(0);
+    expect(publishEvent).not.toHaveBeenCalled();
   });
 
   it('grava error_details no audit_log e na row', async () => {

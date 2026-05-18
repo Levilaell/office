@@ -12,6 +12,7 @@ import type {
   Json,
   ServiceRoleClient,
 } from '@office/shared-db';
+import { publishEvent } from '@office/shared-events';
 import { appendAuditLog } from '../audit/index';
 import {
   isChannelSessionStatus,
@@ -192,8 +193,9 @@ export const updateChannelSessionStatus = async (
   if (updated.error) throw updated.error;
 
   if (previousStatus !== input.status) {
+    const traceId = input.traceId ?? crypto.randomUUID();
     await appendAuditLog(supabase, {
-      trace_id: input.traceId ?? crypto.randomUUID(),
+      trace_id: traceId,
       tenant_id: input.tenantId,
       actor: input.actor ?? 'system',
       action: 'channel_session.status_changed',
@@ -205,6 +207,31 @@ export const updateChannelSessionStatus = async (
         ...(input.errorDetails && { errorDetails: input.errorDetails }),
       } as Json,
     });
+
+    // Realtime: UI de canais reflete sem refresh. Failure de publish NÃO
+    // derruba a operação — DB já foi atualizado, audit já gravado; pior
+    // caso UI fica desatualizada até próximo refresh.
+    if (isChannelType(updated.data.channel)) {
+      try {
+        await publishEvent(
+          'channel_session.status_changed',
+          `tenant:${input.tenantId}`,
+          {
+            sessionId: input.sessionId,
+            tenantId: input.tenantId,
+            channel: updated.data.channel,
+            previousStatus: previousStatus ?? 'unknown',
+            status: input.status,
+          },
+          traceId,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `[channel_sessions] publish status_changed failed (non-fatal): ${message}`,
+        );
+      }
+    }
   }
 
   return { row: updated.data, previousStatus };

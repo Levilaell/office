@@ -20,6 +20,7 @@ export const EVENT_TYPES = [
   'approval.created',
   'approval.resolved',
   'message.received',
+  'channel_session.status_changed',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -128,6 +129,23 @@ export const MessageReceivedPayload = z.object({
   channel: z.enum(['email', 'whatsapp', 'simulated_webhook', 'sms']),
 });
 export type MessageReceivedPayload = z.infer<typeof MessageReceivedPayload>;
+
+export const ChannelSessionStatusChangedPayload = z.object({
+  sessionId: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  // ChannelType específico (adapter) — UI traduz pra abstrato quando precisa.
+  channel: z.enum([
+    'simulated_webhook',
+    'email_imap',
+    'whatsapp_evolution',
+    'whatsapp_cloud',
+  ]),
+  previousStatus: z.string().min(1),
+  status: z.string().min(1),
+});
+export type ChannelSessionStatusChangedPayload = z.infer<
+  typeof ChannelSessionStatusChangedPayload
+>;
 
 // Envelope --------------------------------------------------------------------
 

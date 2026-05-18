@@ -18,6 +18,7 @@ export {
   ApprovalCreatedPayload,
   ApprovalResolvedPayload,
   MessageReceivedPayload,
+  ChannelSessionStatusChangedPayload,
   AgentTaskJobPayload,
   isEventType,
   type EventType,
