@@ -54,6 +54,12 @@ export type ApprovalSnapshot = {
   createdAt: string;
 };
 
+export type ConversationLastDecision =
+  | 'respond_direct'
+  | 'handoff_specialist'
+  | 'escalate_human'
+  | 'ignore';
+
 export type ConversationSnapshot = {
   id: string;
   accountId: string;
@@ -63,6 +69,15 @@ export type ConversationSnapshot = {
   subject: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
+  /** Slug hierárquico da última classificação do Coordenador. Null antes da
+   *  primeira classificação ou pra conversas que não passam pelo coord. */
+  intentCurrent: string | null;
+  /** Última decisão do Coordenador. Persistido derivado da última
+   *  classificação; UI usa pra badge/cor sem refetch. */
+  lastDecision: ConversationLastDecision | null;
+  /** Marcador derivado da metadata.assigned_to_human. UI mostra alerta
+   *  quando humano precisa atuar. */
+  assignedToHuman: boolean;
 };
 
 export type ChannelSessionSnapshot = {

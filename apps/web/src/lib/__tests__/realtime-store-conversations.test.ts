@@ -14,6 +14,9 @@ const conversation = (over: Partial<ConversationSnapshot> = {}): ConversationSna
   subject: null,
   lastMessageAt: '2026-05-15T10:00:00.000Z',
   unreadCount: 0,
+  intentCurrent: null,
+  lastDecision: null,
+  assignedToHuman: false,
   ...over,
 });
 
@@ -66,6 +69,34 @@ describe('realtime-store conversations', () => {
     });
     expect(Object.keys(useRealtimeStore.getState().conversations)).toEqual(['c1', 'c2']);
     expect(useRealtimeStore.getState().hydrated).toBe(true);
+  });
+
+  it('updateConversationIntent atualiza intent e decision sem perder demais campos', () => {
+    useRealtimeStore.getState().upsertConversation(
+      conversation({ id: 'c1', unreadCount: 3 }),
+    );
+    useRealtimeStore
+      .getState()
+      .updateConversationIntent('c1', 'operacional.status_obrigacao', 'handoff_specialist');
+    const c = useRealtimeStore.getState().conversations.c1;
+    expect(c?.intentCurrent).toBe('operacional.status_obrigacao');
+    expect(c?.lastDecision).toBe('handoff_specialist');
+    expect(c?.unreadCount).toBe(3);
+  });
+
+  it('updateConversationIntent é no-op se conversation não existe', () => {
+    useRealtimeStore
+      .getState()
+      .updateConversationIntent('inexistente', 'social.saudacao', 'respond_direct');
+    expect(useRealtimeStore.getState().conversations.inexistente).toBeUndefined();
+  });
+
+  it('markConversationEscalated marca assignedToHuman + lastDecision escalate', () => {
+    useRealtimeStore.getState().upsertConversation(conversation({ id: 'c1' }));
+    useRealtimeStore.getState().markConversationEscalated('c1');
+    const c = useRealtimeStore.getState().conversations.c1;
+    expect(c?.assignedToHuman).toBe(true);
+    expect(c?.lastDecision).toBe('escalate_human');
   });
 });
 

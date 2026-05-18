@@ -283,6 +283,18 @@ export const act = async (
     costUsd: llmMetrics?.costUsd ?? null,
   });
 
+  // 2.b. Espelha a decisão atual em conversation.metadata pra UI ler sem
+  // join com conversation_classifications. Patch incremental — não sobrescreve
+  // outras chaves (assigned_to_human já foi setado em escalate_human acima).
+  await patchConversationMetadata(supabase, {
+    conversationId: conversation.id,
+    metadataPatch: {
+      last_decision: decision.decision,
+      last_intent: decision.intent,
+      last_classification_at: new Date().toISOString(),
+    },
+  });
+
   // 3. UI escuta esse evento pra atualizar badge sem refetch da lista inteira.
   const intentChanged: ConversationIntentChangedPayload = {
     tenantId: conversation.tenant_id,

@@ -57,6 +57,12 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const replaceTasks = useRealtimeStore((s) => s.replaceTasks);
   const replaceApprovals = useRealtimeStore((s) => s.replaceApprovals);
   const replaceConversations = useRealtimeStore((s) => s.replaceConversations);
+  const updateConversationIntent = useRealtimeStore(
+    (s) => s.updateConversationIntent,
+  );
+  const markConversationEscalated = useRealtimeStore(
+    (s) => s.markConversationEscalated,
+  );
   const replaceChannelSessions = useRealtimeStore((s) => s.replaceChannelSessions);
   const updateChannelSessionStatus = useRealtimeStore(
     (s) => s.updateChannelSessionStatus,
@@ -145,6 +151,46 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
       };
       socket.on('message.received', onMessageReceived);
 
+      // Sprint 1.2 — Coordenador atualizou intent: aplica delta direto sem
+      // refetch. Payload já tem intent + decision; status do unread/last
+      // message não muda nesse evento (vem por outras vias).
+      const VALID_DECISIONS: ReadonlyArray<string> = [
+        'respond_direct',
+        'handoff_specialist',
+        'escalate_human',
+        'ignore',
+      ];
+      socket.on('conversation.intent_changed', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as Record<string, unknown>;
+        if (
+          typeof p.conversationId !== 'string' ||
+          typeof p.intent !== 'string' ||
+          typeof p.decision !== 'string' ||
+          !VALID_DECISIONS.includes(p.decision)
+        ) {
+          return;
+        }
+        updateConversationIntent(
+          p.conversationId,
+          p.intent,
+          p.decision as 'respond_direct' | 'handoff_specialist' | 'escalate_human' | 'ignore',
+        );
+      });
+
+      // Sprint 1.2 — Coordenador escalou pra humano. Marca delta direto e
+      // dispara refetch da lista pra capturar outbound message (T05) e
+      // last_message_at atualizado.
+      socket.on('agent.escalated_human', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as Record<string, unknown>;
+        if (typeof p.conversationId !== 'string') return;
+        markConversationEscalated(p.conversationId);
+        refetchConversations()
+          .then(replaceConversations)
+          .catch((err) => console.error('[realtime] refetch conversations', err));
+      });
+
       // channel_session.status_changed: aplicação direta do delta (payload
       // tem status novo). Refetch como fallback se status vier inválido.
       socket.on('channel_session.status_changed', (payload: unknown) => {
@@ -184,6 +230,8 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     replaceTasks,
     replaceApprovals,
     replaceConversations,
+    updateConversationIntent,
+    markConversationEscalated,
     replaceChannelSessions,
     updateChannelSessionStatus,
   ]);

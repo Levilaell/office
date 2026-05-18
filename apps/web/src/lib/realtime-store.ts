@@ -5,6 +5,7 @@ import type {
   AgentSnapshot,
   ApprovalSnapshot,
   ChannelSessionSnapshot,
+  ConversationLastDecision,
   ConversationSnapshot,
   InitialSnapshot,
   TaskSnapshot,
@@ -35,6 +36,12 @@ export type RealtimeState = {
   removeApproval: (id: string) => void;
   upsertConversation: (snap: ConversationSnapshot) => void;
   replaceConversations: (snaps: ConversationSnapshot[]) => void;
+  updateConversationIntent: (
+    id: string,
+    intent: string,
+    decision: ConversationLastDecision,
+  ) => void;
+  markConversationEscalated: (id: string) => void;
   replaceChannelSessions: (snaps: ChannelSessionSnapshot[]) => void;
   updateChannelSessionStatus: (
     id: string,
@@ -109,6 +116,30 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
     set((cur) => ({ conversations: { ...cur.conversations, [snap.id]: snap } })),
 
   replaceConversations: (snaps) => set({ conversations: indexById(snaps) }),
+
+  updateConversationIntent: (id, intent, decision) =>
+    set((cur) => {
+      const existing = cur.conversations[id];
+      if (!existing) return cur;
+      return {
+        conversations: {
+          ...cur.conversations,
+          [id]: { ...existing, intentCurrent: intent, lastDecision: decision },
+        },
+      };
+    }),
+
+  markConversationEscalated: (id) =>
+    set((cur) => {
+      const existing = cur.conversations[id];
+      if (!existing) return cur;
+      return {
+        conversations: {
+          ...cur.conversations,
+          [id]: { ...existing, assignedToHuman: true, lastDecision: 'escalate_human' },
+        },
+      };
+    }),
 
   replaceChannelSessions: (snaps) => set({ channelSessions: indexById(snaps) }),
 
