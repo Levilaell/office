@@ -5,6 +5,7 @@ import { getAnthropicClient } from './client';
 import { estimateInputTokens, preflightBudget } from './budget';
 import { LLM_TRACER_SCOPE } from './instrumentation';
 import { calculateCost } from './pricing';
+import { isLlmMockMode, resolveMockResponse } from './testing';
 import type {
   LlmCallBudget,
   LlmCallInput,
@@ -45,6 +46,13 @@ const readPositiveFloat = (raw: string | undefined, fallback: number): number =>
 // `output.spanId` refere-se ao span pai `llm.call`, não ao child criado
 // pelo AnthropicInstrumentation. Use `traceId` para correlação ponta-a-ponta.
 export const llmCall = (input: LlmCallInput): Promise<LlmCallOutput> => {
+  // Replay mode: pula budget/HTTP, retorna resposta registrada no mock.
+  // O bypass acontece ANTES de abrir span pra não poluir o tracing com
+  // chamadas que nunca tocaram um modelo.
+  if (isLlmMockMode()) {
+    return Promise.resolve(resolveMockResponse(input));
+  }
+
   return getLlmTracer().startActiveSpan('llm.call', async (parentSpan) => {
     const startedAt = Date.now();
     const modelId = resolveModelForTier(input.tier);

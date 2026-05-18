@@ -19,3 +19,13 @@ export type {
   LlmStopReason,
   LlmUsage,
 } from './types';
+
+export {
+  registerLlmMockResponse,
+  clearLlmMockRegistry,
+  isLlmMockMode,
+  matchByUserContent,
+  type LlmMockMatcher,
+  type LlmMockEntry,
+  type LlmMockResponseShape,
+} from './testing';
