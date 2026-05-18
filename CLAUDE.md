@@ -93,7 +93,7 @@ Cada `apps/*` pode ter CLAUDE.md local com contexto específico que sobrescreve 
 - Cobertura: 80 testes unit + 17 integration verdes (rodam em `pnpm test` e `pnpm test:integration`).
 - Departamentos: só `platform` tem agente real (Roteador). `atendimento`, `societario`, `pessoal`, `contabil`, `fiscal`, `financeiro_interno` têm salas no escritório 2D mas vazios.
 - ADRs de Fase 1 publicados (014-017): escopo do Atendimento, ChannelAdapter, Coordenador, modo shadow + tiers de autonomia em conversa síncrona.
-- Próximo: Sprint 1.0 — Fundações de Atendimento (tabelas conversations/messages/channels + Coordenador + primeiro ChannelAdapter). Em andamento no branch `feat/atendimento-foundations`.
+- Próximo: Sprint 1.0 — Fundações de Atendimento (schema `conversations` + `messages`, seed dos 3 agentes, endpoint dev `inbound/simulate`). PR de integração: `feat/atendimento-foundations-aligned`. Sprint 1.1 conecta o Coordenador real ao bus; Sprint 1.3 introduz ChannelAdapter e canais reais.
 
 ## Comandos
 
