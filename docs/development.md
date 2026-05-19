@@ -2,6 +2,15 @@
 
 Guia pra subir o projeto do zero numa máquina nova. Pra contexto arquitetural, ver `CLAUDE.md` e `docs/adrs/`.
 
+## Ambiente padrão: Supabase Cloud + Redis nativo
+
+ADR-012 e ADR-013 definem: **ambiente de dev é Cloud-first**.
+
+- Supabase: projeto cloud linkado via `supabase link --project-ref <ref>`. Toda migration vai com `pnpm exec supabase db push --linked`. Toda regeração de types vai com `pnpm exec supabase gen types typescript --linked > packages/shared-db/src/database.types.ts`.
+- Redis: instalado nativo no SO (apt/brew), não em container.
+- Docker NÃO é requisito de dev. Se você roda `pnpm db:start` (Supabase local em Docker), é opcional — útil pra teste isolado de schema ou pra rodar `db:diff` (que exige shadow DB).
+- Seeds e scripts assumem `SUPABASE_URL` apontando pro endpoint REST do projeto cloud (`<ref>.supabase.co`). Se colar URL de dashboard por engano, todos os seeds falham rápido com mensagem clara.
+
 ## Pré-requisitos
 
 - **Node 20+** (declarado em `package.json` → `engines.node`).
@@ -13,7 +22,7 @@ Guia pra subir o projeto do zero numa máquina nova. Pra contexto arquitetural, 
   - [Clerk](https://dashboard.clerk.com) — auth + Organizations habilitado
   - [Supabase](https://supabase.com) — Cloud free tier (ADR-012)
 
-**Não precisa de Docker** pra desenvolver. Supabase migrou pra Cloud em dev (ADR-012) e Redis roda nativo no SO (ADR-013).
+**Não precisa de Docker** pra desenvolver. Supabase é Cloud (ADR-012) e Redis roda nativo no SO (ADR-013).
 
 ## Setup inicial
 
@@ -91,7 +100,25 @@ Sobe os 3 apps em paralelo via Turborepo:
 
 - `apps/web` em http://localhost:3000 (Next.js)
 - `apps/agent-runtime` em http://localhost:3001 (Hono + Socket.io + workers BullMQ)
-- `apps/workers` — placeholder por enquanto
+- `apps/workers` (IMAP poller + drafts expiration poller a partir do Sprint 1.5)
+
+### Matar processos órfãos
+
+`pnpm dev` ocasionalmente deixa processos pendurados em 3000/3001 quando você mata o terminal de forma rude. Pra liberar:
+
+```bash
+lsof -ti:3000,3001 | xargs -r kill -9
+```
+
+### Reset de dados de demo
+
+Pra popular o tenant com dados de teste em ordem correta:
+
+```bash
+pnpm demo:reset
+```
+
+Roda em sequência: `seed:agents` → `seed:atendimento-test-data` → `seed:leads-test-data`. Idempotente, todos. Não toca em `channel_session` (rode `pnpm seed:email-channel` à parte se quiser canal real).
 
 ## Validar
 
@@ -172,7 +199,10 @@ pnpm exec supabase db push --linked   # aplica migrations no cloud
 pnpm exec supabase db diff --linked   # gera migration a partir de mudanças (precisa de Docker pra shadow DB)
 pnpm exec supabase gen types typescript --linked > packages/shared-db/src/database.types.ts
 
-pnpm seed:agents      # cria roteador em tenants existentes (idempotente)
+pnpm seed:agents                     # cria roteador em tenants existentes (idempotente)
+pnpm seed:atendimento-test-data      # 1 account + 3 obligations + 2 documents (Sprint 1.3)
+pnpm seed:leads-test-data            # 3 leads em estados diferentes (Sprint 1.4)
+pnpm demo:reset                      # orquestra os 3 seeds acima em ordem
 ```
 
 ## Convenções de commit e branches

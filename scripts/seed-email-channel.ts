@@ -29,6 +29,7 @@ import { config as loadEnv } from 'dotenv';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServiceRoleClient, upsertChannelSession } from '@office/shared-domain';
+import { validateSupabaseEnv } from './validate-supabase-env';
 
 const envCandidates = [
   resolve(process.cwd(), '.env.local'),
@@ -61,8 +62,8 @@ const parsePort = (raw: string, name: string): number => {
 };
 
 const main = async (): Promise<void> => {
-  const supabaseUrl = require('SUPABASE_URL');
-  const serviceRoleKey = require('SUPABASE_SERVICE_ROLE_KEY');
+  // Valida formato do SUPABASE_URL antes de tudo (rejeita URL de dashboard).
+  const { url: supabaseUrl, serviceRoleKey } = validateSupabaseEnv();
   const tenantId = require('SEED_EMAIL_TENANT_ID');
   const accountId = require('SEED_EMAIL_ACCOUNT_ID');
   const email = require('SEED_EMAIL_ADDRESS');

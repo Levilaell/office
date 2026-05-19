@@ -20,6 +20,7 @@ import { config as loadEnv } from 'dotenv';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServiceRoleClient } from '@office/shared-domain';
+import { validateSupabaseEnv } from './validate-supabase-env';
 
 const envCandidates = [
   resolve(process.cwd(), '.env.local'),
@@ -47,15 +48,7 @@ const monthOf = (offsetDays: number): string => {
 };
 
 const main = async (): Promise<void> => {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    console.error(
-      'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios. Configure no .env.local.',
-    );
-    process.exit(1);
-  }
-
+  const { url, serviceRoleKey } = validateSupabaseEnv();
   const supabase = createServiceRoleClient({ url, serviceRoleKey });
 
   // 1. Pega o primeiro tenant (mais antigo).

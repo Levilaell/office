@@ -24,7 +24,8 @@
     "seed:agents": "tsx scripts/seed-existing-tenants.ts",
     "seed:email-channel": "tsx scripts/seed-email-channel.ts",
     "seed:atendimento-test-data": "tsx scripts/seed-atendimento-test-data.ts",
-    "seed:leads-test-data": "tsx scripts/seed-leads-test-data.ts"
+    "seed:leads-test-data": "tsx scripts/seed-leads-test-data.ts",
+    "demo:reset": "tsx scripts/demo-reset.ts"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.66.0",
