@@ -9,6 +9,7 @@ import { useAgents, useDraftCountsByAgent } from '@/lib/realtime-store';
 import type { AgentSnapshot } from '@/lib/realtime-types';
 import { AgentSheet } from './AgentSheet';
 import type { RenderAgent } from './agent-render';
+import { AtendimentoRoomHud } from './AtendimentoRoomHud';
 import {
   OfficeCanvas,
   type PendingHandoffDispatch,
@@ -102,6 +103,7 @@ export function OfficeCanvasShell() {
         department={hoveredEmptyRoom}
         onClose={() => setHoveredEmptyRoom(null)}
       />
+      <AtendimentoRoomHud />
       <AgentSheet agentId={selectedId} onClose={() => setSelectedId(null)} />
     </div>
   );

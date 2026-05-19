@@ -295,6 +295,34 @@ export const useChannelSessions = (): ChannelSessionSnapshot[] =>
     }),
   );
 
+// Sprint 1.6 — último timestamp de mensagem entre todas as conversations
+// abertas. Usado pelo HUD da sala Atendimento. ISO ou null se sem dados.
+export const useLatestConversationMessageAt = (): string | null =>
+  useRealtimeStore((s) => {
+    let latest: string | null = null;
+    for (const conv of Object.values(s.conversations)) {
+      const at = conv.lastMessageAt;
+      if (at === null) continue;
+      if (latest === null || at > latest) latest = at;
+    }
+    return latest;
+  });
+
+// Sprint 1.6 — total de drafts pending de agentes de Atendimento. HUD
+// mostra contador único pra sala.
+export const useAtendimentoPendingDraftsCount = (): number =>
+  useRealtimeStore((s) => {
+    const atendimentoAgentIds = new Set<string>();
+    for (const a of Object.values(s.agents)) {
+      if (a.department === 'atendimento') atendimentoAgentIds.add(a.id);
+    }
+    let count = 0;
+    for (const d of Object.values(s.drafts)) {
+      if (d.status === 'pending' && atendimentoAgentIds.has(d.agentId)) count += 1;
+    }
+    return count;
+  });
+
 export const useHydrated = (): boolean => useRealtimeStore((s) => s.hydrated);
 export const useSocketConnected = (): boolean =>
   useRealtimeStore((s) => s.socketConnected);
