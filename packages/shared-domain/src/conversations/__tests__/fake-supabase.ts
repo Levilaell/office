@@ -44,6 +44,7 @@ const DEFAULTS_BY_TABLE: Record<string, Record<string, unknown>> = {
     resolved_at: null,
     agent_run_id: null,
     source_message_id: null,
+    decision_metadata: null,
   },
   // Sprint 1.3 — obligations e documents também precisam de defaults
   // mínimos pra testes de tools.
@@ -98,11 +99,15 @@ const DEFAULTS_BY_TABLE: Record<string, Record<string, unknown>> = {
 
 // Sprint 1.3 — filtros estendidos pra suportar `gte`, `lte`, `in` usados
 // pelas tools do Especialista Operacional.
+// Sprint 1.5 — `lt`, `gt`, `not is null` pro worker de expiração de drafts.
 type Filter =
   | { op: 'eq'; col: string; val: unknown }
   | { op: 'gte'; col: string; val: unknown }
   | { op: 'lte'; col: string; val: unknown }
-  | { op: 'in'; col: string; values: unknown[] };
+  | { op: 'lt'; col: string; val: unknown }
+  | { op: 'gt'; col: string; val: unknown }
+  | { op: 'in'; col: string; values: unknown[] }
+  | { op: 'not_is_null'; col: string };
 
 const isMatch = (row: Row, filters: Filter[]): boolean => {
   for (const f of filters) {
@@ -116,8 +121,16 @@ const isMatch = (row: Row, filters: Filter[]): boolean => {
     } else if (f.op === 'lte') {
       if (cell === null || cell === undefined) return false;
       if ((cell as never) > (f.val as never)) return false;
+    } else if (f.op === 'lt') {
+      if (cell === null || cell === undefined) return false;
+      if ((cell as never) >= (f.val as never)) return false;
+    } else if (f.op === 'gt') {
+      if (cell === null || cell === undefined) return false;
+      if ((cell as never) <= (f.val as never)) return false;
     } else if (f.op === 'in') {
       if (!f.values.includes(cell)) return false;
+    } else if (f.op === 'not_is_null') {
+      if (cell === null || cell === undefined) return false;
     }
   }
   return true;
@@ -202,6 +215,25 @@ export class FakeQuery implements PromiseLike<{ data: unknown; error: SupabaseEr
 
   in(col: string, values: unknown[]): FakeQuery {
     this.filters.push({ op: 'in', col, values });
+    return this;
+  }
+
+  lt(col: string, val: unknown): FakeQuery {
+    this.filters.push({ op: 'lt', col, val });
+    return this;
+  }
+
+  gt(col: string, val: unknown): FakeQuery {
+    this.filters.push({ op: 'gt', col, val });
+    return this;
+  }
+
+  /** Suporta apenas `not(col, 'is', null)` — equivalente a `WHERE col IS NOT NULL`. */
+  not(col: string, op: 'is', val: null): FakeQuery {
+    if (op !== 'is' || val !== null) {
+      throw new Error('fake.not() only supports (col, "is", null)');
+    }
+    this.filters.push({ op: 'not_is_null', col });
     return this;
   }
 

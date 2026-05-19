@@ -1,6 +1,7 @@
 import { createServiceRoleClient, health } from '@office/shared-domain';
 import { closeAllRedis } from '@office/shared-events';
 import { startPollLoop } from './imap-poller.js';
+import { startExpirationLoop } from './drafts-expiration-poller.js';
 
 const requireEnv = (name: string): string => {
   const value = process.env[name];
@@ -8,12 +9,17 @@ const requireEnv = (name: string): string => {
   return value;
 };
 
-const parseInterval = (raw: string | undefined): number => {
-  if (!raw) return 60_000;
+const parseInterval = (
+  raw: string | undefined,
+  defaultMs: number,
+  minMs: number,
+  label: string,
+): number => {
+  if (!raw) return defaultMs;
   const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 5_000) {
-    console.warn(`[workers] IMAP_POLL_INTERVAL_MS inválido (${raw}), usando 60000`);
-    return 60_000;
+  if (!Number.isFinite(n) || n < minMs) {
+    console.warn(`[workers] ${label} inválido (${raw}), usando ${defaultMs}`);
+    return defaultMs;
   }
   return n;
 };
@@ -26,17 +32,34 @@ const main = async (): Promise<void> => {
     url: requireEnv('SUPABASE_URL'),
     serviceRoleKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   });
-  const intervalMs = parseInterval(process.env.IMAP_POLL_INTERVAL_MS);
-  console.log(`[workers] IMAP poller intervalMs=${intervalMs}`);
 
-  const loop = startPollLoop({ supabase, intervalMs });
+  const imapIntervalMs = parseInterval(
+    process.env.IMAP_POLL_INTERVAL_MS,
+    60_000,
+    5_000,
+    'IMAP_POLL_INTERVAL_MS',
+  );
+  console.log(`[workers] IMAP poller intervalMs=${imapIntervalMs}`);
+  const imapLoop = startPollLoop({ supabase, intervalMs: imapIntervalMs });
+
+  const expirationIntervalMs = parseInterval(
+    process.env.DRAFTS_EXPIRATION_POLL_INTERVAL_MS,
+    30_000,
+    5_000,
+    'DRAFTS_EXPIRATION_POLL_INTERVAL_MS',
+  );
+  console.log(`[workers] drafts expiration poller intervalMs=${expirationIntervalMs}`);
+  const expirationLoop = startExpirationLoop({
+    supabase,
+    intervalMs: expirationIntervalMs,
+  });
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[workers] received ${signal}, shutting down`);
-    await loop.stop();
+    await Promise.all([imapLoop.stop(), expirationLoop.stop()]);
     await closeAllRedis().catch(() => undefined);
     process.exit(0);
   };

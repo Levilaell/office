@@ -867,6 +867,7 @@ export type Database = {
           content_type: string
           conversation_id: string
           created_at: string
+          decision_metadata: Json | null
           edit_diff: Json | null
           expires_at: string | null
           final_message_id: string | null
@@ -887,6 +888,7 @@ export type Database = {
           content_type?: string
           conversation_id: string
           created_at?: string
+          decision_metadata?: Json | null
           edit_diff?: Json | null
           expires_at?: string | null
           final_message_id?: string | null
@@ -907,6 +909,7 @@ export type Database = {
           content_type?: string
           conversation_id?: string
           created_at?: string
+          decision_metadata?: Json | null
           edit_diff?: Json | null
           expires_at?: string | null
           final_message_id?: string | null

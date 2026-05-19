@@ -9,10 +9,19 @@
 import { describe, it, expect } from 'vitest';
 import {
   approveDraft,
+  approveDraftWithMessage,
+  computeDraftExpiresAt,
+  computeEditDiff,
   createDraft,
+  editDraft,
+  expireDraft,
   getDraftById,
+  listDraftsByTenant,
+  listExpiredPendingDrafts,
   listPendingDrafts,
   markDraftAutoApproved,
+  rejectDraft,
+  resolveDraftExpirationMinutes,
 } from '../drafts';
 import { FakeSupabase } from '../../conversations/__tests__/fake-supabase';
 
@@ -203,5 +212,280 @@ describe('markDraftAutoApproved', () => {
     expect(updated.status).toBe('auto_approved');
     expect(updated.final_message_id).toBe(finalMsgId);
     expect(updated.resolved_at).not.toBeNull();
+  });
+});
+
+// =============================================================================
+// Sprint 1.5 — expiração, reject, edit, approveWithMessage
+// =============================================================================
+
+describe('resolveDraftExpirationMinutes', () => {
+  it('default 15 quando display_settings ausente', () => {
+    expect(resolveDraftExpirationMinutes(null)).toBe(15);
+    expect(resolveDraftExpirationMinutes({})).toBe(15);
+  });
+
+  it('default 15 quando drafts.expiration_minutes ausente', () => {
+    expect(resolveDraftExpirationMinutes({ drafts: {} })).toBe(15);
+  });
+
+  it('lê valor configurado', () => {
+    expect(
+      resolveDraftExpirationMinutes({ drafts: { expiration_minutes: 30 } }),
+    ).toBe(30);
+  });
+
+  it('clamp em [1, 1440]', () => {
+    expect(
+      resolveDraftExpirationMinutes({ drafts: { expiration_minutes: 0 } }),
+    ).toBe(1);
+    expect(
+      resolveDraftExpirationMinutes({ drafts: { expiration_minutes: 5000 } }),
+    ).toBe(1440);
+  });
+
+  it('ignora não-number', () => {
+    expect(
+      resolveDraftExpirationMinutes({ drafts: { expiration_minutes: '30' } }),
+    ).toBe(15);
+  });
+});
+
+describe('computeDraftExpiresAt', () => {
+  it('retorna ISO future em minutos', () => {
+    const now = Date.now();
+    const iso = computeDraftExpiresAt(15);
+    const ms = new Date(iso).getTime() - now;
+    expect(ms).toBeGreaterThanOrEqual(15 * 60_000 - 50);
+    expect(ms).toBeLessThanOrEqual(15 * 60_000 + 50);
+  });
+});
+
+describe('computeEditDiff', () => {
+  it('captura distance entre original e edited', () => {
+    const diff = computeEditDiff('abc', 'abcdef');
+    expect(diff).toEqual({ original: 'abc', edited: 'abcdef', char_distance: 3 });
+  });
+});
+
+describe('rejectDraft', () => {
+  it('rejeita draft pending', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'oi',
+    });
+    const result = await rejectDraft(fake as never, created.id, {
+      resolvedByUserId: USER,
+      reason: 'valor desatualizado',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.draft.status).toBe('rejected');
+      expect(result.draft.resolved_by).toBe(USER);
+      const meta = result.draft.decision_metadata as Record<string, unknown>;
+      expect(meta.reason).toBe('valor desatualizado');
+    }
+  });
+
+  it('aceita sem reason', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'oi',
+    });
+    const result = await rejectDraft(fake as never, created.id, {
+      resolvedByUserId: USER,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('not_found pra id inexistente', async () => {
+    const fake = makeFake();
+    const result = await rejectDraft(
+      fake as never,
+      '00000000-0000-0000-0000-000000000000',
+      { resolvedByUserId: USER },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('not_found');
+  });
+
+  it('not_pending pra draft já resolvido', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'oi',
+      status: 'approved',
+    });
+    const result = await rejectDraft(fake as never, created.id, {
+      resolvedByUserId: USER,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('not_pending');
+  });
+});
+
+describe('editDraft', () => {
+  it('grava status=edited + edit_diff + final_message_id', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'O DAS vence dia 20.',
+    });
+    const finalMsgId = '88888888-8888-8888-8888-888888888888';
+    const result = await editDraft(fake as never, created.id, {
+      resolvedByUserId: USER,
+      editedContent: 'O DAS vence dia 20 — valor R$ 142,50.',
+      finalMessageId: finalMsgId,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.draft.status).toBe('edited');
+      expect(result.draft.final_message_id).toBe(finalMsgId);
+      const diff = result.draft.edit_diff as Record<string, unknown>;
+      expect(diff.original).toBe('O DAS vence dia 20.');
+      expect(diff.edited).toContain('R$ 142,50');
+      expect(typeof diff.char_distance).toBe('number');
+    }
+  });
+
+  it('not_pending se draft já resolvido', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'msg',
+      status: 'rejected',
+    });
+    const result = await editDraft(fake as never, created.id, {
+      resolvedByUserId: USER,
+      editedContent: 'edit',
+      finalMessageId: '11111111-aaaa-aaaa-aaaa-111111111111',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('not_pending');
+  });
+});
+
+describe('approveDraftWithMessage', () => {
+  it('aprova vinculando final_message_id', async () => {
+    const fake = makeFake();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'msg',
+    });
+    const finalMsgId = '99999999-aaaa-aaaa-aaaa-999999999999';
+    const result = await approveDraftWithMessage(fake as never, created.id, {
+      resolvedByUserId: USER,
+      finalMessageId: finalMsgId,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.draft.status).toBe('approved');
+      expect(result.draft.final_message_id).toBe(finalMsgId);
+    }
+  });
+});
+
+describe('expireDraft + listExpiredPendingDrafts', () => {
+  it('lista drafts pending com expires_at no passado', async () => {
+    const fake = makeFake();
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const future = new Date(Date.now() + 60_000).toISOString();
+
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'past',
+      expiresAt: past,
+    });
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'future',
+      expiresAt: future,
+    });
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'no expiration',
+      // expiresAt undefined → fica null no fake
+    });
+
+    const result = await listExpiredPendingDrafts(fake as never);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.proposed_content).toBe('past');
+  });
+
+  it('expira atomicamente; race entre 2 expires retorna not_pending', async () => {
+    const fake = makeFake();
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const created = await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'expired',
+      expiresAt: past,
+    });
+    const r1 = await expireDraft(fake as never, created.id, {
+      expirationMinutes: 15,
+    });
+    expect(r1.ok).toBe(true);
+    if (r1.ok) {
+      expect(r1.draft.status).toBe('expired');
+      const meta = r1.draft.decision_metadata as Record<string, unknown>;
+      expect(meta.expiration_minutes).toBe(15);
+    }
+    const r2 = await expireDraft(fake as never, created.id, {
+      expirationMinutes: 15,
+    });
+    expect(r2.ok).toBe(false);
+    if (!r2.ok) expect(r2.reason).toBe('not_pending');
+  });
+});
+
+describe('listDraftsByTenant', () => {
+  it('aceita filter por array de status', async () => {
+    const fake = makeFake();
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'A',
+      status: 'pending',
+    });
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'B',
+      status: 'approved',
+    });
+    await createDraft(fake as never, {
+      tenantId: TENANT,
+      conversationId: CONV,
+      agentId: AGENT,
+      proposedContent: 'C',
+      status: 'expired',
+    });
+    const result = await listDraftsByTenant(fake as never, TENANT, {
+      status: ['pending', 'expired'],
+    });
+    expect(result.map((d) => d.proposed_content).sort()).toEqual(['A', 'C']);
   });
 });

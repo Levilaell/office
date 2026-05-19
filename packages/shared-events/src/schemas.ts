@@ -37,6 +37,14 @@ export const EVENT_TYPES = [
   // Sprint 1.4 — eventos do Especialista Comercial.
   'lead.qualified',
   'lead.status_changed',
+  // Sprint 1.5 — modo shadow completo. Drafts viram cidadãos de primeira
+  // classe no realtime: UI escuta pra atualizar inbox sem refetch + badges
+  // em conversas/leads.
+  'draft.created',
+  'draft.approved',
+  'draft.edited',
+  'draft.rejected',
+  'draft.expired',
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -286,6 +294,84 @@ export const LeadStatusChangedPayload = z.object({
   traceId: z.string().min(1),
 });
 export type LeadStatusChangedPayload = z.infer<typeof LeadStatusChangedPayload>;
+
+// Sprint 1.5 — Drafts de aprovação humana (modo shadow) ---------------------
+
+/**
+ * Agente criou draft em tier `sugestivo` e está esperando decisão do operador.
+ * UI usa pra inserir card no inbox em tempo real (e tocar som suave, etc).
+ */
+export const DraftCreatedPayload = z.object({
+  tenantId: z.string().uuid(),
+  draftId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  agentId: z.string().uuid(),
+  traceId: z.string().min(1),
+  proposedContent: z.string().min(1),
+  confidence: z.number().min(0).max(1).nullable(),
+  expiresAt: z.string().min(1).nullable(),
+});
+export type DraftCreatedPayload = z.infer<typeof DraftCreatedPayload>;
+
+/**
+ * Operador aprovou draft. UI remove do inbox + atualiza conversation
+ * (a mensagem outbound vinculada aparece via fluxo normal de messages).
+ */
+export const DraftApprovedPayload = z.object({
+  tenantId: z.string().uuid(),
+  draftId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  finalMessageId: z.string().uuid(),
+  resolvedBy: z.string().uuid().nullable(),
+  traceId: z.string().min(1),
+});
+export type DraftApprovedPayload = z.infer<typeof DraftApprovedPayload>;
+
+/**
+ * Operador editou + aprovou. Mesmo lifecycle do approved, mas o status
+ * final é `edited` e o diff fica salvo no draft.
+ */
+export const DraftEditedPayload = z.object({
+  tenantId: z.string().uuid(),
+  draftId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  finalMessageId: z.string().uuid(),
+  resolvedBy: z.string().uuid().nullable(),
+  traceId: z.string().min(1),
+  editDiff: z.object({
+    original: z.string(),
+    edited: z.string(),
+    char_distance: z.number().int().min(0),
+  }),
+});
+export type DraftEditedPayload = z.infer<typeof DraftEditedPayload>;
+
+/**
+ * Operador rejeitou. Mensagem NÃO é enviada ao cliente final.
+ */
+export const DraftRejectedPayload = z.object({
+  tenantId: z.string().uuid(),
+  draftId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  resolvedBy: z.string().uuid().nullable(),
+  reason: z.string().min(1).optional(),
+  traceId: z.string().min(1),
+});
+export type DraftRejectedPayload = z.infer<typeof DraftRejectedPayload>;
+
+/**
+ * Worker de expiração marcou draft como expirado (passou da janela do tenant
+ * sem decisão). Cliente final NÃO recebe nada — operador vê na UI.
+ */
+export const DraftExpiredPayload = z.object({
+  tenantId: z.string().uuid(),
+  draftId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  agentId: z.string().uuid(),
+  expirationMinutes: z.number().int().min(1),
+  traceId: z.string().min(1),
+});
+export type DraftExpiredPayload = z.infer<typeof DraftExpiredPayload>;
 
 // Envelope --------------------------------------------------------------------
 
