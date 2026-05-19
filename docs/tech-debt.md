@@ -108,12 +108,7 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** migration cria tabela `intents` (tenant_id, slug, display_name, category, default_decision, target_agent_key, template_id, always_human, alwaysHuman). Seed inicial popula a constante atual. Catálogo passa a ser carregado por tenant.
 **Quando atacar:** primeiro tenant que pedir customização OU início da Fase 2
 
-### TD-017 🟡 UI de configuração de tier de autonomia ausente
-
-**Detectado em:** Sprint 1.2 (2026-05-19)
-**Impacto:** `agents.autonomy_tier` é coluna no DB com default `sugestivo`. Sprint 1.2 lê (Coordenador apenas; sem efeito prático ainda) mas não há UI. Mudança de tier exige SQL direto.
-**Solução:** página `/dashboard/configuracoes/agentes` com lista de agentes do tenant + dropdown de tier (com permission check pra owner/manager). Mudança grava em `audit_log` com before/after.
-**Quando atacar:** Sprint 1.5 (modo shadow completo) — modo shadow precisa que operador alterne tiers facilmente pra observar comportamento
+<!-- TD-017 fechado no Sprint 1.5 — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-018 🟡 `conversations` não tem coluna `assigned_to` nem status `waiting_human`
 
@@ -137,12 +132,7 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** quando tabela `contacts` for criada (Sprint 1.5+ ou Fase 2), adicionar FK via migration aditiva (`ALTER TABLE leads ADD CONSTRAINT leads_primary_contact_id_fkey FOREIGN KEY (primary_contact_id) REFERENCES contacts(id) ON DELETE SET NULL`).
 **Quando atacar:** sprint que criar tabela `contacts`.
 
-### TD-022 🟡 Especialista Comercial envia direto sem materializar message_drafts
-
-**Detectado em:** Sprint 1.4
-**Impacto:** inconsistente com o que Sprint 1.3 (paralelo, não rodou ainda) vai fazer pro Especialista Operacional. Operador humano não consegue ver "respostas automáticas do Comercial" via inbox de drafts. Audit_log registra o conteúdo em `especialista_comercial.turn`, então rastreabilidade não é perdida — só ergonomia de UI.
-**Solução:** quando Sprint 1.3 mergear e materializar `message_drafts`, o Sprint 1.5 unifica — Comercial passa a criar draft com `status='auto_approved'` antes de enviar via ChannelAdapter. UI de inbox surfaceia todos os agentes.
-**Quando atacar:** Sprint 1.5 (depende de Sprint 1.3 ter mergeado primeiro).
+<!-- TD-022 fechado no Sprint 1.5 — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-023 🟢 leads sem unique partial index em (tenant_id, primary_conversation_id)
 
@@ -172,6 +162,32 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** regex pra urgência crítica + classificação determinística pra `urgente`. Adicionar match de palavras-chave configuráveis por tenant na Fase 2.
 **Quando atacar:** Sprint 1.5+ quando análise de custo revelar volume de mensagens urgentes que justifique
 
+### TD-026 🟡 Draft órfão pending em falha de envio (send_failed)
+
+**Detectado em:** Sprint 1.3 (mental, não persistido) + Sprint 1.5 (formalizado)
+**Impacto:** dois caminhos deixam draft como `pending` indefinidamente:
+1. Tier `semi_autonomo` em materializeProposal: cria draft `pending` antes de chamar sendAgentMessage; se send falhar, draft fica órfão (status `pending` mas sem expires_at futuro coerente, sem operador esperado).
+2. Endpoint `/decide` (approve/edit): se envio externo falhar após draft estar pending, retorna 502 mas draft continua pending — operador pode retentar mas se desistir, ocupa inbox.
+Worker de expiração cobre eventualmente (15 min default) mas até lá fica visível como "fantasma" no inbox.
+**Solução:** dois caminhos:
+1. Marcar draft com `expires_at = now() + 5min` ou status `send_failed` separado em vez de pending, com motivo guardado em `decision_metadata.send_failure`.
+2. Quando operador retenta um draft expirado, permitir reabertura (status `pending` de novo).
+**Quando atacar:** Sprint 1.6+ ou primeiro reclamo de operador. Volume Fase 1 baixo, não bloqueia produção.
+
+### TD-027 🟢 Página de detalhe de conversa não existe — badge cross-page só em leads
+
+**Detectado em:** Sprint 1.5 (orientação)
+**Impacto:** Sprint 1.5 promete badge "Rascunho pendente" em todos os cards de conversa/lead que tenham draft pending. Implementado em `/atendimento/leads` (página existe). NÃO implementado em `/atendimento/conversations/[id]` porque essa página NÃO EXISTE — só há API route `/api/conversations/[id]`, sem UI de detalhe.
+**Solução:** quando UI de conversation detail for criada (provavelmente Sprint 1.6 ou Fase 2 quando inbox de mensagens unificado entrar), adicionar `usePendingDraftByConversation(conv.id)` + badge no mesmo padrão.
+**Quando atacar:** quando primeira página de conversation detail for desenhada.
+
+### TD-028 🟢 Diff de edição salvo em JSONB mas UI só mostra "editado"
+
+**Detectado em:** Sprint 1.5 (decisão arquitetural #3)
+**Impacto:** quando operador edita draft antes de aprovar, salvamos `edit_diff = { original, edited, char_distance }` no banco. UI atual renderiza apenas badge "editado" — não mostra diff visual (texto colorido add/remove).
+**Solução:** componente DiffViewer (libs como react-diff-viewer ou implementação custom com diff-match-patch). Mostra side-by-side ou inline.
+**Quando atacar:** Sprint 1.6+ quando primeiro tenant pedir ou eval de promoção de prompt depender de revisão das edições.
+
 ---
 
 ## Itens fechados
@@ -195,3 +211,15 @@ só itens identificados durante implementação que merecem revisita.
 **Detectado em:** Sprint 0.3d-B
 **Fechado em:** Sprint 1.0-prep (2026-05-18)
 **Solução aplicada:** `packages/shared-domain/src/approvals/index.ts` agora aplica `.eq('status','pending')` no UPDATE e lança `ApprovalRaceConditionError` se zero rows. Endpoint `POST /api/approvals/[id]/decide` traduz o erro pra HTTP 409 com body `{ error: 'approval_already_resolved', approvalId }`. Testes em `packages/shared-domain/src/approvals/__tests__/decide-approval.test.ts`.
+
+### TD-017 ✅ UI de configuração de tier de autonomia ausente
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Fechado em:** Sprint 1.5 (2026-05-21)
+**Solução aplicada:** página `/dashboard/configuracoes/agentes` lista agentes do tenant em atendimento (Coordenador + Especialista Operacional + Especialista Comercial); dropdown muda entre `sugestivo` e `semi_autonomo`. Endpoint `PATCH /api/configuracoes/agentes/[id]` valida via novo helper `getCurrentTenantUserRole` que role do user em `tenant_users` está em `{owner_tenant, manager}`. Audit_log `agent.autonomy_tier_changed` com before/after. Tiers `manual` e `autonomo` rejeitados (Fase 1 não suporta).
+
+### TD-022 ✅ Especialista Comercial envia direto sem materializar message_drafts
+
+**Detectado em:** Sprint 1.4
+**Fechado em:** Sprint 1.5 (2026-05-21)
+**Solução aplicada:** novo helper `materializeProposal` em `packages/shared-domain/src/atendimento/materialize-proposal.ts` unifica o comportamento dos 2 Especialistas. Tier sugestivo cria draft `pending` real com `expires_at` configurável por tenant (`display_settings.drafts.expiration_minutes`, default 15min); tier semi_autonomo envia direto + draft `auto_approved` vinculado à mensagem final. Coordenador continua respondendo sociais direto (sem draft) e Especialistas escalam humano (T05/T_NO_DATA) DIRETO (sem draft) — feedback rápido pro cliente importa nessas duas exceções. Fecha também o TD-021 do self-review do Sprint 1.3 (que nunca foi persistido neste arquivo).
