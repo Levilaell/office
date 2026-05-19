@@ -7,6 +7,7 @@ import { useAuth } from '@clerk/nextjs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { humanErrorMessage, parseHttpErrorBody } from '@/lib/error-messages';
 import { relativeTime } from '@/lib/relative-time';
 import type {
   ConversationDetailSnapshot,
@@ -83,20 +84,27 @@ export function ConversationDetailView({
   const [detail, setDetail] = useState<ConversationDetailSnapshot>(initialDetail);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [refetching, setRefetching] = useState<boolean>(false);
+  const [refetchError, setRefetchError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const conversationId = detail.conversation.id;
 
   const refetch = useCallback(async () => {
     setRefetching(true);
+    setRefetchError(null);
     try {
       const r = await fetch(`/api/atendimento/conversations/${conversationId}`, {
         cache: 'no-store',
       });
-      if (!r.ok) throw new Error(`refetch failed: ${r.status}`);
+      if (!r.ok) {
+        const body = await parseHttpErrorBody(r);
+        throw new Error(humanErrorMessage(r.status, body));
+      }
       const next = (await r.json()) as ConversationDetailSnapshot;
       setDetail(next);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha desconhecida';
+      setRefetchError(message);
       console.error('[ConversationDetailView] refetch', err);
     } finally {
       setRefetching(false);
@@ -211,6 +219,15 @@ export function ConversationDetailView({
           </Button>
         </div>
       </header>
+
+      {refetchError && (
+        <div
+          role="alert"
+          className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-300"
+        >
+          Falha ao atualizar: {refetchError}
+        </div>
+      )}
 
       <div
         className={`mt-4 grid gap-6 ${

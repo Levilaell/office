@@ -1,6 +1,8 @@
 'use client';
 
-import { useChannelSessions } from '@/lib/realtime-store';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
+import { useChannelSessions, useHydrated } from '@/lib/realtime-store';
 import { relativeTime } from '@/lib/relative-time';
 import type { ChannelSessionSnapshot } from '@/lib/realtime-types';
 
@@ -110,6 +112,7 @@ function ChannelSessionCard({ session }: { session: ChannelSessionSnapshot }) {
 }
 
 export default function CanaisPage() {
+  const hydrated = useHydrated();
   const sessions = useChannelSessions();
 
   return (
@@ -132,14 +135,23 @@ export default function CanaisPage() {
         </button>
       </header>
 
-      {sessions.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-          <p className="text-sm">Nenhum canal configurado ainda.</p>
-          <p className="mt-1 text-xs">
-            Use <code className="rounded bg-gray-100 px-1">pnpm seed:email-channel</code> pra
-            criar um canal de e-mail de teste.
-          </p>
-        </div>
+      {!hydrated ? (
+        <ListSkeleton count={2} rowClassName="h-24" />
+      ) : sessions.length === 0 ? (
+        <EmptyState
+          icon="🔌"
+          title="Nenhum canal configurado ainda"
+          body={
+            <span>
+              Use{' '}
+              <code className="rounded bg-gray-100 px-1 text-gray-700">
+                pnpm seed:email-channel
+              </code>{' '}
+              pra criar um canal de e-mail de teste, ou contate o admin pra
+              conectar WhatsApp via Evolution.
+            </span>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (

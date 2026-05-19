@@ -8,10 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
 import { cn } from '@/lib/utils';
 import { DEPARTMENT_FILTER_OPTIONS } from '@/lib/department-meta';
-import { useAgent, useDraft, usePendingDrafts } from '@/lib/realtime-store';
+import {
+  useAgent,
+  useDraft,
+  useHydrated,
+  usePendingDrafts,
+} from '@/lib/realtime-store';
 import type { DraftSnapshot } from '@/lib/realtime-types';
 import { DraftCard } from './DraftCard';
 import { DraftSheet } from './DraftSheet';
@@ -29,6 +35,7 @@ type Props = {
 };
 
 export function DraftsInbox({ onApprove, onEdit, onReject }: Props) {
+  const hydrated = useHydrated();
   const drafts = usePendingDrafts();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('all');
@@ -128,13 +135,17 @@ export function DraftsInbox({ onApprove, onEdit, onReject }: Props) {
         </div>
       </header>
 
-      <FilteredList
-        drafts={urgencyFiltered}
-        departmentFilter={departmentFilter}
-        hasActiveFilter={hasActiveFilter}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
+      {!hydrated ? (
+        <ListSkeleton count={3} rowClassName="h-20" />
+      ) : (
+        <FilteredList
+          drafts={urgencyFiltered}
+          departmentFilter={departmentFilter}
+          hasActiveFilter={hasActiveFilter}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+      )}
 
       <DraftSheet
         draft={displayed}
@@ -164,15 +175,16 @@ function FilteredList({
   if (drafts.length === 0) {
     return (
       <EmptyState
+        icon="📥"
         title={
           hasActiveFilter
             ? 'Nenhum rascunho corresponde aos filtros'
-            : 'Sua equipe de IA está esperando você'
+            : 'Inbox vazio'
         }
         body={
           hasActiveFilter
             ? 'Ajusta o filtro pra ver mais rascunhos.'
-            : 'Rascunhos vão aparecer aqui quando agentes precisarem de aprovação.'
+            : 'Sua equipe de IA está esperando você. Rascunhos aparecem aqui quando agentes precisam de aprovação.'
         }
       />
     );
@@ -211,15 +223,6 @@ function DepartmentGate({
       : agent?.department === departmentFilter;
   if (!visible) return null;
   return <DraftCard draft={draft} selected={selected} onSelect={onSelect} />;
-}
-
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <Card className="border-dashed bg-card/40 p-10 text-center">
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-    </Card>
-  );
 }
 
 function CountBadge({

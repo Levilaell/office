@@ -1,7 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useLeads, usePendingDraftByConversation } from '@/lib/realtime-store';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListSkeleton } from '@/components/ui/loading-skeleton';
+import {
+  useHydrated,
+  useLeads,
+  usePendingDraftByConversation,
+} from '@/lib/realtime-store';
 import { relativeTime } from '@/lib/relative-time';
 import type { LeadSnapshot, LeadStatus } from '@/lib/realtime-types';
 
@@ -174,6 +180,7 @@ function LeadCard({ lead }: { lead: LeadSnapshot }) {
 }
 
 export default function LeadsPage() {
+  const hydrated = useHydrated();
   const leads = useLeads();
   const [filter, setFilter] = useState<'all' | LeadStatus>('all');
 
@@ -223,14 +230,27 @@ export default function LeadsPage() {
         })}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-          <p className="text-sm">Nenhum lead {filter === 'all' ? '' : `em "${STATUS_LABEL[filter as LeadStatus]}"`} ainda.</p>
-          <p className="mt-1 text-xs">
-            Use <code className="rounded bg-gray-100 px-1">pnpm seed:leads-test-data</code>{' '}
-            pra criar leads de teste.
-          </p>
-        </div>
+      {!hydrated ? (
+        <ListSkeleton count={3} rowClassName="h-28" />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon="🌱"
+          title={
+            filter === 'all'
+              ? 'Nenhum lead ainda'
+              : `Nenhum lead em "${STATUS_LABEL[filter as LeadStatus]}"`
+          }
+          body={
+            <span>
+              Quando o Especialista Comercial qualificar uma conversa nova, ela
+              aparece aqui. Pra testar agora:{' '}
+              <code className="rounded bg-gray-100 px-1 text-gray-700">
+                pnpm seed:leads-test-data
+              </code>
+              .
+            </span>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((l) => (
