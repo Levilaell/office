@@ -104,6 +104,37 @@ export const updateAgentState = async (
   return data;
 };
 
+export type SupportedAutonomyTierUpdate = 'sugestivo' | 'semi_autonomo';
+
+/**
+ * Atualiza autonomy_tier de um agente (RLS valida tenant; caller já
+ * deve ter validado permissão de role). Retorna a row antes E depois pra
+ * caller gravar audit_log com before/after.
+ *
+ * Aceita apenas tiers suportados na Fase 1 (sugestivo/semi_autonomo).
+ */
+export const updateAgentAutonomyTier = async (
+  supabase: AnyClient,
+  agentId: string,
+  tier: SupportedAutonomyTierUpdate,
+): Promise<{ before: Agent; after: Agent } | null> => {
+  const before = await getAgentById(supabase, agentId);
+  if (!before) return null;
+  if (before.autonomy_tier === tier) {
+    // No-op — não faz UPDATE pra evitar audit/event ruidoso.
+    return { before, after: before };
+  }
+  const { data, error } = await supabase
+    .from('agents')
+    .update({ autonomy_tier: tier })
+    .eq('id', agentId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { before, after: data };
+};
+
 export const getRouterForTenant = async (
   supabase: AnyClient,
   tenantId: string,

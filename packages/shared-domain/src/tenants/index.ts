@@ -110,3 +110,26 @@ export const unlinkUserFromTenant = async (
 
   if (error) throw error;
 };
+
+export type TenantRole =
+  Database['public']['Tables']['tenant_users']['Row']['role'];
+
+/**
+ * Lê o role do user no tenant ativo (via RLS — JWT já restringe ao tenant
+ * corrente). Retorna null se user não tem membership no tenant ativo.
+ *
+ * Usado em endpoints que exigem permissão (mudar tier de autonomia,
+ * configurações sensíveis): rejeita se role não está na whitelist.
+ */
+export const getCurrentTenantUserRole = async (
+  supabase: AnyClient,
+  userId: string,
+): Promise<TenantRole | null> => {
+  const { data, error } = await supabase
+    .from('tenant_users')
+    .select('role')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.role as TenantRole | undefined) ?? null;
+};
