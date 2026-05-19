@@ -174,12 +174,7 @@ Worker de expiração cobre eventualmente (15 min default) mas até lá fica vis
 2. Quando operador retenta um draft expirado, permitir reabertura (status `pending` de novo).
 **Quando atacar:** Sprint 1.6+ ou primeiro reclamo de operador. Volume Fase 1 baixo, não bloqueia produção.
 
-### TD-027 🟢 Página de detalhe de conversa não existe — badge cross-page só em leads
-
-**Detectado em:** Sprint 1.5 (orientação)
-**Impacto:** Sprint 1.5 promete badge "Rascunho pendente" em todos os cards de conversa/lead que tenham draft pending. Implementado em `/atendimento/leads` (página existe). NÃO implementado em `/atendimento/conversations/[id]` porque essa página NÃO EXISTE — só há API route `/api/conversations/[id]`, sem UI de detalhe.
-**Solução:** quando UI de conversation detail for criada (provavelmente Sprint 1.6 ou Fase 2 quando inbox de mensagens unificado entrar), adicionar `usePendingDraftByConversation(conv.id)` + badge no mesmo padrão.
-**Quando atacar:** quando primeira página de conversation detail for desenhada.
+<!-- TD-027 fechado no Sprint 1.6 — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-028 🟢 Diff de edição salvo em JSONB mas UI só mostra "editado"
 
@@ -187,6 +182,48 @@ Worker de expiração cobre eventualmente (15 min default) mas até lá fica vis
 **Impacto:** quando operador edita draft antes de aprovar, salvamos `edit_diff = { original, edited, char_distance }` no banco. UI atual renderiza apenas badge "editado" — não mostra diff visual (texto colorido add/remove).
 **Solução:** componente DiffViewer (libs como react-diff-viewer ou implementação custom com diff-match-patch). Mostra side-by-side ou inline.
 **Quando atacar:** Sprint 1.6+ quando primeiro tenant pedir ou eval de promoção de prompt depender de revisão das edições.
+
+### TD-030 🟢 Catálogo de tipos de obligation/document como constantes
+
+**Detectado em:** Sprint 1.3 (mencionado no self-review como TD-023 do 1.3 mas nunca persistido)
+**Impacto:** `getObligationsForAccount` e `getDocumentsForAccount` aceitam strings livres; não há validação de domínio. Catálogo de tipos (DAS, INSS, DCTFWeb, NFe, comprovante...) vive em código + seed data, não em tabela.
+**Solução:** tabela `obligation_kinds` + `document_kinds` por tenant (custom per escritório) OU enum global. Seed mantém os atuais. Validar no INSERT.
+**Quando atacar:** Fase 2+ quando escritórios pedirem taxonomia própria, ou se o número de tipos crescer muito.
+
+### TD-031 🟢 Storage de arquivos pra documents ainda não existe
+
+**Detectado em:** Sprint 1.3 (mencionado no self-review como TD-024 do 1.3 mas nunca persistido)
+**Impacto:** tabela `documents` guarda metadata (kind, status, due_date, etc) mas não tem campo de URL/storage do arquivo real. Cliente final manda comprovante mas a gente só registra "recebido" sem persistir o arquivo.
+**Solução:** Supabase Storage bucket por tenant (RLS) + coluna `documents.storage_path` apontando pro objeto. Upload via signed URL ou direto via API route.
+**Quando atacar:** Fase 2+ quando primeiro fluxo de comprovante real entrar (provavelmente em pessoal/folha).
+
+### TD-032 🟡 Suite formal de RLS em tools do Atendimento
+
+**Detectado em:** Sprint 1.3 (mencionado no self-review como TD-025 do 1.3 mas nunca persistido)
+**Impacto:** `getAccountSnapshot` + `getObligationsForAccount` + `getDocumentsForAccount` validam `tenant_mismatch` em código (rejeita se account.tenant_id != ctx.tenantId), mas NÃO há teste de integração com 2 tenants concorrentes lendo. RLS no schema cobre na prática; faltam testes que provem isso continuamente.
+**Solução:** suite em `tests/integration/atendimento-tools-rls.test.ts` que cria 2 tenants + 2 accounts (1 cada) e verifica que tools do tenant A não conseguem ler dados do tenant B mesmo via service_role com tenant errado nas args.
+**Quando atacar:** Fase 2-prep — bloqueia introdução de novos departamentos que vão duplicar o pattern.
+
+### TD-033 🟢 HUD da sala Atendimento é fixo no canto (não viewport-aware)
+
+**Detectado em:** Sprint 1.6 Tarefa 3
+**Impacto:** sprint pedia HUD que aparece SÓ quando câmera/foco do canvas está na sala Atendimento. Como o canvas atual não tem zoom/pan, a detecção não tem como ser feita — HUD ficou fixo no canto enquanto canvas montado. Funciona bem enquanto há só Atendimento operacional; quando outros departamentos entrarem com HUDs próprios, vão se sobrepor.
+**Solução:** quando navegação câmera entrar (zoom/pan), detectar posição central da viewport vs centroide das salas e mostrar/esconder HUDs. Cada departamento ativo terá seu próprio HUD overlay.
+**Quando atacar:** Fase 2+ junto com navegação de câmera no canvas.
+
+### TD-034 🟢 Modo demo sem auto-login
+
+**Detectado em:** Sprint 1.6 Tarefa 7
+**Impacto:** `/demo` requer que Levi logue manualmente e selecione "Demo — Levi Lael" no Clerk Org Switcher antes de poder disparar cenários. Pra apresentação rápida de cliente novo, adiciona 2 cliques de fricção.
+**Solução:** Clerk session API (`createSession` server-side) pra autenticar automaticamente como user demo pré-criado quando acessa `/demo`. Requer Clerk paid plan ou impersonation flow. Alternativa: deep link com session token assinado pra abrir direto.
+**Quando atacar:** se demo virar canal principal de venda E fricção dos 2 cliques causar perda mensurável (test A/B). Fase 2+ ou nunca se não justificar.
+
+### TD-035 🟢 Cleanup de tenant demo é manual
+
+**Detectado em:** Sprint 1.6 Tarefa 7
+**Impacto:** `pnpm seed:demo-tenant` cria org Clerk + tenant + dados. Pra "resetar" entre apresentações, é preciso (a) arquivar tenant via SQL ou webhook organization.deleted (b) apagar org Clerk manualmente no painel. Sem comando `pnpm seed:demo-cleanup`.
+**Solução:** script `seed-demo-cleanup.ts` que (1) DELETE Clerk org via fetch API, (2) DELETE em ordem (channel_sessions → drafts → leads → conversations → messages → agents → accounts → obligations → documents → audit_log → tenant_users → tenant) respeitando ON DELETE RESTRICT.
+**Quando atacar:** quando preparar primeira demo comercial de verdade e precisar reset rápido entre apresentações.
 
 ### TD-029 🟡 Janela <50ms entre read-and-send permite duplicate send
 
@@ -225,6 +262,12 @@ Em Fase 1 (1-2 operadores ativos por tenant) a probabilidade é baixa, mas exist
 **Detectado em:** Sprint 1.2 (2026-05-19)
 **Fechado em:** Sprint 1.5 (2026-05-21)
 **Solução aplicada:** página `/dashboard/configuracoes/agentes` lista agentes do tenant em atendimento (Coordenador + Especialista Operacional + Especialista Comercial); dropdown muda entre `sugestivo` e `semi_autonomo`. Endpoint `PATCH /api/configuracoes/agentes/[id]` valida via novo helper `getCurrentTenantUserRole` que role do user em `tenant_users` está em `{owner_tenant, manager}`. Audit_log `agent.autonomy_tier_changed` com before/after. Tiers `manual` e `autonomo` rejeitados (Fase 1 não suporta).
+
+### TD-027 ✅ Página de detalhe de conversa não existe
+
+**Detectado em:** Sprint 1.5 (orientação)
+**Fechado em:** Sprint 1.6 (2026-05-19)
+**Solução aplicada:** `/dashboard/atendimento/conversas/[id]` criada como Server Component que carrega via helper server-only `loadConversationDetail` (conversation + messages ASC + classifications + lead + drafts vinculados). Client component `ConversationDetailView` renderiza timeline + painel lateral collapsible, com subscriber socket.io filtrando `message.received` por conversationId pra refetch automático. Inbox de drafts e leads cards ganham link "Ver histórico completo →" pra a nova página.
 
 ### TD-022 ✅ Especialista Comercial envia direto sem materializar message_drafts
 
