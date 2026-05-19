@@ -10,6 +10,7 @@ import type { AgentSnapshot } from '@/lib/realtime-types';
 import { AgentSheet } from './AgentSheet';
 import type { RenderAgent } from './agent-render';
 import { AtendimentoRoomHud } from './AtendimentoRoomHud';
+import { DemoTriggerWidget } from './DemoTriggerWidget';
 import {
   OfficeCanvas,
   type PendingHandoffDispatch,
@@ -37,7 +38,7 @@ const toRenderAgent = (
   };
 };
 
-export function OfficeCanvasShell() {
+export function OfficeCanvasShell({ demoMode = false }: { demoMode?: boolean }) {
   const agents = useAgents();
   const draftCounts = useDraftCountsByAgent();
   const pendingHandoffs = usePendingHandoffs();
@@ -104,6 +105,7 @@ export function OfficeCanvasShell() {
         onClose={() => setHoveredEmptyRoom(null)}
       />
       <AtendimentoRoomHud />
+      {demoMode && <DemoTriggerWidget />}
       <AgentSheet agentId={selectedId} onClose={() => setSelectedId(null)} />
     </div>
   );

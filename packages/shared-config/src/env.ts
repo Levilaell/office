@@ -7,7 +7,24 @@ const baseEnvSchema = z.object({
   LLM_MODEL_TRIAGE: z.string().min(1).optional(),
   LLM_MODEL_DEFAULT: z.string().min(1).optional(),
   LLM_MODEL_CRITICAL: z.string().min(1).optional(),
+  ENABLE_DEMO_MODE: z.string().optional(),
 });
+
+/**
+ * Sprint 1.6 — gate único pro modo demo. Habilitado quando:
+ *  - dev (NODE_ENV !== 'production') por default; OU
+ *  - prod com `ENABLE_DEMO_MODE=true` explicitamente.
+ *
+ * Toda rota e endpoint de demo passa por esse helper. Em prod sem flag,
+ * retorna false → rotas de demo respondem 404 (não vazam existência).
+ */
+export const isDemoModeEnabled = (
+  raw: NodeJS.ProcessEnv = process.env,
+): boolean => {
+  if (raw.ENABLE_DEMO_MODE === 'true') return true;
+  if (raw.NODE_ENV !== 'production') return true;
+  return false;
+};
 
 export type BaseEnv = z.infer<typeof baseEnvSchema>;
 
