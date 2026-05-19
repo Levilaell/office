@@ -120,6 +120,34 @@ export type LeadSnapshot = {
   updatedAt: string;
 };
 
+export type DraftStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'edited'
+  | 'expired'
+  | 'auto_approved';
+
+export type DraftSnapshot = {
+  id: string;
+  conversationId: string;
+  agentId: string;
+  status: DraftStatus;
+  proposedContent: string;
+  reasoning: string | null;
+  confidence: number | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  finalMessageId: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  /** edit_diff completo quando status='edited' (Sprint 1.5 não renderiza
+   *  visual; só badge "editado"). */
+  editDiff: Record<string, unknown> | null;
+  /** decision_metadata estruturado pelo status. */
+  decisionMetadata: Record<string, unknown> | null;
+};
+
 export type InitialSnapshot = {
   agents: AgentSnapshot[];
   tasks: TaskSnapshot[];
@@ -127,6 +155,7 @@ export type InitialSnapshot = {
   conversations: ConversationSnapshot[];
   channelSessions: ChannelSessionSnapshot[];
   leads: LeadSnapshot[];
+  drafts: DraftSnapshot[];
 };
 
 export type AgentRunSnapshot = {

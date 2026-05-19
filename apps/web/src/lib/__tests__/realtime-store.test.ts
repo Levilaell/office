@@ -59,6 +59,7 @@ const resetStore = () => {
     conversations: {},
     channelSessions: {},
     leads: {},
+    drafts: {},
     hydrated: false,
     socketConnected: false,
   });
@@ -75,6 +76,7 @@ describe('realtime-store', () => {
       conversations: [],
       channelSessions: [],
       leads: [],
+      drafts: [],
     };
 
     useRealtimeStore.getState().hydrate(snap);

@@ -4,6 +4,7 @@ import type {
   ChannelSessionRow,
   ConversationRow,
   LeadRow,
+  MessageDraftRow,
   Task,
 } from '@office/shared-domain';
 import {
@@ -24,6 +25,8 @@ import type {
   ApprovalSnapshot,
   ChannelSessionSnapshot,
   ConversationSnapshot,
+  DraftSnapshot,
+  DraftStatus,
   LeadSnapshot,
   LeadStatus,
   TaskSnapshot,
@@ -204,6 +207,41 @@ export const toLeadSnapshot = (row: LeadRow): LeadSnapshot => {
     convertedToAccountId: row.converted_to_account_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+};
+
+const ALLOWED_DRAFT_STATUSES: ReadonlyArray<DraftStatus> = [
+  'pending',
+  'approved',
+  'rejected',
+  'edited',
+  'expired',
+  'auto_approved',
+];
+
+const isDraftStatus = (value: unknown): value is DraftStatus =>
+  typeof value === 'string' &&
+  (ALLOWED_DRAFT_STATUSES as readonly string[]).includes(value);
+
+export const toDraftSnapshot = (row: MessageDraftRow): DraftSnapshot => {
+  if (!isDraftStatus(row.status)) {
+    throw new Error(`invalid status in message_draft ${row.id}: ${row.status}`);
+  }
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    agentId: row.agent_id,
+    status: row.status,
+    proposedContent: row.proposed_content,
+    reasoning: row.reasoning,
+    confidence: row.confidence === null ? null : Number(row.confidence),
+    resolvedBy: row.resolved_by,
+    resolvedAt: row.resolved_at,
+    finalMessageId: row.final_message_id,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+    editDiff: toRecordOrNull(row.edit_diff),
+    decisionMetadata: toRecordOrNull(row.decision_metadata),
   };
 };
 

@@ -7,6 +7,8 @@ import type {
   ChannelSessionSnapshot,
   ConversationLastDecision,
   ConversationSnapshot,
+  DraftSnapshot,
+  DraftStatus,
   InitialSnapshot,
   LeadSnapshot,
   LeadStatus,
@@ -20,6 +22,7 @@ export type RealtimeState = {
   conversations: Record<string, ConversationSnapshot>;
   channelSessions: Record<string, ChannelSessionSnapshot>;
   leads: Record<string, LeadSnapshot>;
+  drafts: Record<string, DraftSnapshot>;
   hydrated: boolean;
   socketConnected: boolean;
 
@@ -53,6 +56,10 @@ export type RealtimeState = {
   upsertLead: (snap: LeadSnapshot) => void;
   replaceLeads: (snaps: LeadSnapshot[]) => void;
   updateLeadStatus: (id: string, status: LeadStatus) => void;
+  upsertDraft: (snap: DraftSnapshot) => void;
+  replaceDrafts: (snaps: DraftSnapshot[]) => void;
+  updateDraftStatus: (id: string, status: DraftStatus) => void;
+  removeDraft: (id: string) => void;
 };
 
 const indexById = <T extends { id: string }>(items: T[]): Record<string, T> => {
@@ -68,6 +75,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
   conversations: {},
   channelSessions: {},
   leads: {},
+  drafts: {},
   hydrated: false,
   socketConnected: false,
 
@@ -79,6 +87,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       conversations: indexById(snapshot.conversations),
       channelSessions: indexById(snapshot.channelSessions),
       leads: indexById(snapshot.leads),
+      drafts: indexById(snapshot.drafts),
       hydrated: true,
     }),
 
@@ -178,6 +187,31 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
           [id]: { ...existing, status },
         },
       };
+    }),
+
+  upsertDraft: (snap) =>
+    set((cur) => ({ drafts: { ...cur.drafts, [snap.id]: snap } })),
+
+  replaceDrafts: (snaps) => set({ drafts: indexById(snaps) }),
+
+  updateDraftStatus: (id, status) =>
+    set((cur) => {
+      const existing = cur.drafts[id];
+      if (!existing) return cur;
+      return {
+        drafts: {
+          ...cur.drafts,
+          [id]: { ...existing, status },
+        },
+      };
+    }),
+
+  removeDraft: (id) =>
+    set((cur) => {
+      if (!(id in cur.drafts)) return cur;
+      const next = { ...cur.drafts };
+      delete next[id];
+      return { drafts: next };
     }),
 }));
 
@@ -291,3 +325,49 @@ export const useLeadsByStatus = (
     }),
   );
 };
+
+// Sprint 1.5 — drafts. Ordena pending por expires_at ASC (mais urgentes
+// primeiro); nulls/sem expiração no fim. Tie-break por createdAt DESC.
+const sortByExpiresThenCreated = (a: DraftSnapshot, b: DraftSnapshot): number => {
+  const ae = a.expiresAt;
+  const be = b.expiresAt;
+  if (ae === be) {
+    return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+  }
+  if (ae === null) return 1;
+  if (be === null) return -1;
+  return ae < be ? -1 : 1;
+};
+
+export const usePendingDrafts = (): DraftSnapshot[] =>
+  useRealtimeStore(
+    useShallow((s) =>
+      Object.values(s.drafts)
+        .filter((d) => d.status === 'pending')
+        .sort(sortByExpiresThenCreated),
+    ),
+  );
+
+export const useDraftsByConversation = (conversationId: string): DraftSnapshot[] =>
+  useRealtimeStore(
+    useShallow((s) =>
+      Object.values(s.drafts)
+        .filter((d) => d.conversationId === conversationId)
+        .sort((a, b) =>
+          a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+        ),
+    ),
+  );
+
+export const usePendingDraftByConversation = (
+  conversationId: string,
+): DraftSnapshot | null =>
+  useRealtimeStore((s) => {
+    for (const d of Object.values(s.drafts)) {
+      if (d.conversationId === conversationId && d.status === 'pending') return d;
+    }
+    return null;
+  });
+
+export const useDraft = (id: string | null | undefined): DraftSnapshot | null =>
+  useRealtimeStore((s) => (id ? (s.drafts[id] ?? null) : null));

@@ -7,6 +7,7 @@ import {
   toApprovalSnapshot,
   toChannelSessionSnapshot,
   toConversationSnapshot,
+  toDraftSnapshot,
   toLeadSnapshot,
   toTaskSnapshot,
 } from '@/lib/realtime-mappers';
@@ -26,36 +27,50 @@ export default async function DashboardLayout({
   // Pre-busca o snapshot inicial server-side. RLS filtra por tenant via JWT
   // do Clerk. Fica garantido que o cliente só recebe dados do tenant ativo.
   const supabase = await getSupabaseForCurrentUser();
-  const [agentsRes, tasksRes, approvalsRes, conversationsRes, channelSessionsRes, leadsRes] =
-    await Promise.all([
-      supabase.from('agents').select('*').order('created_at', { ascending: false }),
-      supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50),
-      supabase
-        .from('approvals')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('conversations')
-        .select('*')
-        .eq('status', 'open')
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .limit(100),
-      supabase
-        .from('channel_sessions')
-        .select('*')
-        .order('channel', { ascending: true }),
-      supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200),
-    ]);
+  const [
+    agentsRes,
+    tasksRes,
+    approvalsRes,
+    conversationsRes,
+    channelSessionsRes,
+    leadsRes,
+    draftsRes,
+  ] = await Promise.all([
+    supabase.from('agents').select('*').order('created_at', { ascending: false }),
+    supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('approvals')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('conversations')
+      .select('*')
+      .eq('status', 'open')
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(100),
+    supabase
+      .from('channel_sessions')
+      .select('*')
+      .order('channel', { ascending: true }),
+    supabase
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200),
+    supabase
+      .from('message_drafts')
+      .select('*')
+      .eq('status', 'pending')
+      .order('expires_at', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .limit(100),
+  ]);
 
   const initialSnapshot: InitialSnapshot = {
     agents: (agentsRes.data ?? []).map(toAgentSnapshot),
@@ -64,6 +79,7 @@ export default async function DashboardLayout({
     conversations: (conversationsRes.data ?? []).map(toConversationSnapshot),
     channelSessions: (channelSessionsRes.data ?? []).map(toChannelSessionSnapshot),
     leads: (leadsRes.data ?? []).map(toLeadSnapshot),
+    drafts: (draftsRes.data ?? []).map(toDraftSnapshot),
   };
 
   return <RealtimeProvider initialSnapshot={initialSnapshot}>{children}</RealtimeProvider>;
