@@ -29,13 +29,13 @@ só itens identificados durante implementação que merecem revisita.
 **Estimativa:** trivial (~20min)
 **Quando atacar:** quando precisar reseedar tenants existentes (situação rara após onboarding síncrono da ADR-007)
 
-### TD-006 🟡 `.env.local` duplicado em 3 apps
+### TD-006 🟢 `.env.local` duplicado em 3 apps (MITIGADO em Sprint Fase 2-prep)
 
 **Detectado em:** 2026-05-15
-**Impacto:** dev precisa manter 3 cópias sincronizadas; fácil de divergir
-**Solução:** single fonte na raiz + dotenvx `--env-file=../../.env.local` nos apps; Next.js requer hack (`next.config.ts` com `loadEnvConfig`) pra ler de fora do diretório
-**Estimativa:** médio (~2h) — incluindo validação que Next continua lendo certo
-**Workaround atual:** `.env.example` documentado (Sessão A) + script `check-env.ts` validando (este worktree, TD-007)
+**Mitigado em:** Sprint Fase 2-prep (2026-05-19, commit ca89070) — drift check no `pnpm check-env`
+**Impacto:** dev precisa manter 3 cópias sincronizadas; drift silencioso entre arquivos era a causa raiz dos bugs (não a duplicação per se)
+**Status atual (Opção B do sprint):** `pnpm check-env` falha rápido se valor de uma chave compartilhada divergir entre apps. Duplicação física persiste mas drift fica visível.
+**Próximo passo (Opção A, sob demanda):** consolidar pra raiz via simlinks ou wrapper dotenvx. Custo estimado 2-3h. Fazer só se drift voltar a causar dor mesmo com check ativo.
 
 ### TD-007 🟢 Turbo dev sai com "Tasks: 0 successful, 3 total"
 
@@ -87,12 +87,7 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** investigar histórico CI do PR #2 e PR #3. Se confirmado que `pnpm build` não rodou ou passou por config errada, ajustar CI.
 **Quando atacar:** próxima sessão de manutenção de CI
 
-### TD-012 🟡 `database.types.ts` editado à mão; precisa regenerar via `pnpm db:types`
-
-**Detectado em:** Sprint 1.0 finalização (2026-05-18)
-**Impacto:** os tipos do Supabase em `packages/shared-db/src/database.types.ts` foram editados manualmente em 3 momentos: (1) Sprint 1.0 original criou as tabelas `conversations`+`interactions` à mão; (2) Sprint 1.0-aligned renomeou `interactions`→`messages` à mão; (3) Sprint 1.0-aligned adicionou `conversations.intent_current` à mão. Se alguém rodar `pnpm db:types` contra cloud que ainda não tem TODAS as migrations aplicadas, os tipos regridem silenciosamente — e o build quebra de forma confusa.
-**Solução:** após o merge desta PR, aplicar as 3 migrations no Supabase Cloud (`20260515103000_atendimento_foundations`, `20260518163051_rename_interactions_to_messages`, `20260518163548_conversations_intent_current`) e então rodar `pnpm db:types --linked` pra alinhar tipos com schema real. Commitar o resultado.
-**Quando atacar:** parte do processo operacional de merge desta PR. Idealmente antes de Sprint 1.1 começar a consumir os tipos.
+<!-- TD-012 fechado no Sprint Fase 2-prep — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-015 🟡 Eval do Coordenador roda em replay puro, sem accuracy de modelo real
 
@@ -117,13 +112,7 @@ só itens identificados durante implementação que merecem revisita.
 **Solução:** migration adiciona coluna `assigned_to UUID NULL REFERENCES users(id)` + amplia CHECK de status com `'waiting_human'`. Refactor de `act.ts` pra setar status + assigned_to em vez de patch metadata. Backfill: tudo com metadata.assigned_to_human=true vira status='waiting_human'.
 **Quando atacar:** Sprint 1.3 (quando especialista entrar) ou Sprint 1.5
 
-### TD-019 📘 Coordenador subscreve `message.received` direto; ADR-016 prevê `message.routed`
-
-**Detectado em:** Sprint 1.2 (2026-05-19)
-**Impacto:** ADR-016 desenhou 3 camadas (Roteador global → Coordenador → Especialista). Na Fase 1, com Atendimento como único departamento, Coordenador subscreve direto a `message.received` — Roteador não roda em mensagens inbound de canais externos (só na rota `/api/triagem`). Quando segundo departamento entrar (Fase 2), Coordenador atual vai roteamento erroneamente toda mensagem inbound como Atendimento.
-**Solução:** introduzir evento `message.routed` (publicado pelo Roteador após classificar departamento). Coordenadores subscrevem `message.routed` filtrando pelo destination_department. Worker de "ingest inbound → Roteador" entra na cadeia entre o canal e o Coordenador.
-**Quando atacar:** Sprint quando segundo departamento (provavelmente Pessoal ou Fiscal) for ativado — sem desvio na Fase 1 com 1 departamento
-**Status:** documentado em ADR-019 (não é dívida ativa — é decisão consciente com critério de reabertura)
+<!-- TD-019 fechado no Sprint Fase 2-prep — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-021 🟢 leads.primary_contact_id sem FK (contacts não existe ainda)
 
@@ -197,12 +186,7 @@ Worker de expiração cobre eventualmente (15 min default) mas até lá fica vis
 **Solução:** Supabase Storage bucket por tenant (RLS) + coluna `documents.storage_path` apontando pro objeto. Upload via signed URL ou direto via API route.
 **Quando atacar:** Fase 2+ quando primeiro fluxo de comprovante real entrar (provavelmente em pessoal/folha).
 
-### TD-032 🟡 Suite formal de RLS em tools do Atendimento
-
-**Detectado em:** Sprint 1.3 (mencionado no self-review como TD-025 do 1.3 mas nunca persistido)
-**Impacto:** `getAccountSnapshot` + `getObligationsForAccount` + `getDocumentsForAccount` validam `tenant_mismatch` em código (rejeita se account.tenant_id != ctx.tenantId), mas NÃO há teste de integração com 2 tenants concorrentes lendo. RLS no schema cobre na prática; faltam testes que provem isso continuamente.
-**Solução:** suite em `tests/integration/atendimento-tools-rls.test.ts` que cria 2 tenants + 2 accounts (1 cada) e verifica que tools do tenant A não conseguem ler dados do tenant B mesmo via service_role com tenant errado nas args.
-**Quando atacar:** Fase 2-prep — bloqueia introdução de novos departamentos que vão duplicar o pattern.
+<!-- TD-032 fechado no Sprint Fase 2-prep — ver seção "Itens fechados" no fim do arquivo. -->
 
 ### TD-033 🟢 HUD da sala Atendimento é fixo no canto (não viewport-aware)
 
@@ -274,3 +258,30 @@ Em Fase 1 (1-2 operadores ativos por tenant) a probabilidade é baixa, mas exist
 **Detectado em:** Sprint 1.4
 **Fechado em:** Sprint 1.5 (2026-05-21)
 **Solução aplicada:** novo helper `materializeProposal` em `packages/shared-domain/src/atendimento/materialize-proposal.ts` unifica o comportamento dos 2 Especialistas. Tier sugestivo cria draft `pending` real com `expires_at` configurável por tenant (`display_settings.drafts.expiration_minutes`, default 15min); tier semi_autonomo envia direto + draft `auto_approved` vinculado à mensagem final. Coordenador continua respondendo sociais direto (sem draft) e Especialistas escalam humano (T05/T_NO_DATA) DIRETO (sem draft) — feedback rápido pro cliente importa nessas duas exceções. Fecha também o TD-021 do self-review do Sprint 1.3 (que nunca foi persistido neste arquivo).
+
+### TD-012 ✅ `database.types.ts` editado à mão; precisa regenerar via `pnpm db:types`
+
+**Detectado em:** Sprint 1.0 finalização (2026-05-18)
+**Fechado em:** Sprint Fase 2-prep (2026-05-19, commit fc1d603)
+**Solução aplicada:** dois passos.
+1. **Auditoria** (Tarefa 5 do sprint): regenerei `database.types.ts` contra Cloud linked. Diff vazio — schema do code e do Cloud estão sincronizados. Sem migrations faltando, sem campos editados à mão divergentes.
+2. **Comando definitivo** (Tarefa 3, commit fc1d603): `package.json` agora tem `pnpm db:types` apontando pra `--linked` (default) e `pnpm db:types:local` pra Docker. Comando antigo tinha `--local` hardcoded e quebrava com `pnpm db:types -- --linked` (CLI rejeitava `--local --linked`).
+Validação: regenerei via `pnpm db:types` e confirmei `git diff packages/shared-db/src/database.types.ts` vazio.
+
+### TD-019 ✅ Coordenador subscreve `message.received` direto; ADR-016 prevê `message.routed`
+
+**Detectado em:** Sprint 1.2 (2026-05-19)
+**Fechado em:** Sprint Fase 2-prep (2026-05-19, commit 2ed12fb) — preparação pra Fase 2 Societário acionou o critério de reabertura do ADR-019
+**Solução aplicada:** topologia em 3 camadas conforme ADR-016, agora também ativa pra mensagens inbound:
+- Worker novo `apps/agent-runtime/src/workers/router-inbound.ts` subscreve `message.received`, lê o conteúdo no DB e enfileira o Roteador via fluxo normal de agent-tasks
+- Roteador (graph) ganhou node `publish` condicional: emite evento novo `message.routed` + audit_log dedicado quando o input carrega conversationId/messageId/accountId. Triagem interna (Fase 0) sem esses campos faz o publish virar no-op
+- Coordenador de Atendimento (`atendimento-coordenador.ts`) trocou subscription `message.received` → `message.routed` filtrado por `destinationDepartment === 'atendimento'`
+- Prompt do Roteador bumpado pra v1.1.0 com `platform` explícito no enum (alinha com `shared-types.DEPARTMENTS`)
+- ADR-019 marcado `superseded`; `docs/adrs/README.md` ganhou seção "Superseded". Sem ADR-020 — o plano de transição estava previsto no próprio ADR-019 e foi seguido fielmente
+- 24 testes de eval do Roteador + 11 testes unit nos workers cobrem os caminhos novos. Manual ponta a ponta pendente (depende de Docker + dev server up — anotado no self-review)
+
+### TD-032 ✅ Suite formal de RLS em tools do Atendimento
+
+**Detectado em:** Sprint 1.3 (mencionado no self-review como TD-025 do 1.3 mas nunca persistido)
+**Fechado em:** Sprint Fase 2-prep (2026-05-19, commit 2b617b5)
+**Solução aplicada:** `tests/integration/rls-fase-1.test.ts` com 24 testes cobrindo as 8 tabelas adicionadas na Fase 1 (conversations, messages, channel_sessions, obligations, documents, message_drafts, leads, conversation_classifications). Cada tabela tem o trio SELECT/INSERT/UPDATE com 2 tenants concorrentes. Padrão idêntico ao existente `rls.test.ts` (pg local + claims JWT). Conversation_classifications é INSERT-only: o teste de UPDATE valida que REVOKE do role authenticated impede modificação. Padrão a replicar nas próximas tabelas (Societário, Fiscal, etc).
