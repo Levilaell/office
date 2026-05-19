@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
   appendAuditLog,
-  getAgentById,
   getCurrentTenantUserRole,
   getUserByClerkUserId,
   updateAgentAutonomyTier,

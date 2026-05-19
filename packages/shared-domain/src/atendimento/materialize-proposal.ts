@@ -80,9 +80,6 @@ export type MaterializeProposalResult =
 
 const UNSUPPORTED_TIERS = new Set(['manual', 'autonomo']);
 
-const isSupportedTier = (tier: string): tier is AutonomyTier =>
-  tier === 'sugestivo' || tier === 'semi_autonomo';
-
 const normalizeTier = (
   tier: string,
 ): { effective: 'sugestivo' | 'semi_autonomo'; fellBack: boolean } => {
