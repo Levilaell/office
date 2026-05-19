@@ -155,3 +155,16 @@ Estado final: `main` único local + remote, 1 worktree (a `office`).
 Sprint Fase 2-prep fechou os 4 TDs prioritários (TD-006 mitigado, TD-012 fechado, TD-019 fechado, TD-032 fechado) em 4 commits diretos em main. Total de 1k+ linhas de mudança, ~60 testes novos, zero PRs abertos.
 
 A plataforma está pronta arquiteturalmente pra Sprint Fase 2.1 abrir o departamento Societário. Pré-requisito operacional: Levi rodar validação manual ponta a ponta via `inboundSimulate` em ambiente com Docker antes de Sprint 2.1 começar — pra confirmar que o Roteador classifica corretamente e o Coordenador filtra como esperado.
+
+## Adendum (post-push) — gotcha de validação manual
+
+Após o push, Levi rodou `inboundSimulate` com "Quando vence meu DAS?" e reportou:
+"audit_log mostra `message.routed`, mas Coordenador não pega — bug do refactor".
+
+Investigação confirmou que **não há bug**: o Roteador classificou `destinationDepartment='fiscal'` (correto — DAS é obrigação fiscal); Coordenador de Atendimento filtra por `'atendimento'` e ignora. Comportamento exato decidido na Tarefa 1 ("Mensagens classificadas pra departamentos sem Coordenador implementado ficam sem consumer — esperado e simétrico").
+
+Validação ponta a ponta com mensagem de atendimento ("Oi, podem confirmar se receberam meu email de ontem?") completou todo o fluxo: router-inbound → Roteador → message.routed → Coordenador → handoff Especialista Operacional → task.completed. ~8s ponta a ponta.
+
+Pra evitar essa confusão no futuro, commit pós-sprint adiciona log informativo no Coordenador quando o filtro rejeita: `ignorando dept=<X> (Coordenador só processa atendimento) msg=<id> trace=<id>`. Antes era no-op silencioso; agora operador vê no log que mensagem foi roteada pra outro departamento.
+
+**Para Sprint 2.1 e adiante:** sempre validar manualmente com mensagem de exemplo do PRÓPRIO departamento que está sendo testado. Mensagens de domínio mais comum no tenant (DAS, NF, ICMS, folha) caem em fiscal/pessoal/contabil — esses Coordenadores não existem ainda, então o fluxo "para" no `message.routed`.

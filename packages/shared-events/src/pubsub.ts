@@ -58,7 +58,16 @@ export const subscribeEvents = (pattern: string, handler: EventHandler): Subscri
   };
 
   sub.on('pmessage', onMessage);
-  void sub.psubscribe(pattern);
+  // psubscribe é fire-and-forget mas com log explícito em falha — sem isso,
+  // subscriber pode ficar mudo silenciosamente (Redis indisponível, pattern
+  // inválido, etc) e o boot do agent-runtime parece OK.
+  sub
+    .psubscribe(pattern)
+    .catch((err) =>
+      console.error(
+        `[shared-events] psubscribe FAILED pattern=${pattern}: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    );
 
   return {
     stop: async (): Promise<void> => {

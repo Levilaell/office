@@ -46,8 +46,9 @@ const TARGET_DEPARTMENT = 'atendimento';
  */
 export const startCoordinatorSubscriber = (
   supabase: ServiceRoleClient,
-): Subscription =>
-  subscribeEvents('tenant:*', async (channel, eventType, payload, envelope) => {
+): Subscription => {
+  log(`subscribed to message.routed on tenant:* (filter=${TARGET_DEPARTMENT})`);
+  return subscribeEvents('tenant:*', async (channel, eventType, payload, envelope) => {
     if (eventType !== 'message.routed') return;
 
     const parsed = MessageRoutedPayload.safeParse(payload);
@@ -60,8 +61,14 @@ export const startCoordinatorSubscriber = (
 
     const routed = parsed.data;
     if (routed.destinationDepartment !== TARGET_DEPARTMENT) {
-      // Mensagem pra outro departamento — outro Coordenador (quando existir)
-      // pega. Aqui é no-op silencioso.
+      // Mensagem pra outro departamento. Log informativo (não silencioso) —
+      // sem isso, operador vê message.routed no audit_log e estranha que
+      // "nada aconteceu", sem entender que o Coordenador filtrou (esperado).
+      // Log permanente: Fase 2-prep só implementa Coordenador de Atendimento;
+      // qualquer outro depto cai aqui até o sprint da Fase 2 ativá-lo.
+      log(
+        `ignorando dept=${routed.destinationDepartment} (Coordenador só processa ${TARGET_DEPARTMENT}) msg=${routed.messageId} trace=${envelope.traceId}`,
+      );
       return;
     }
 
@@ -141,3 +148,4 @@ export const startCoordinatorSubscriber = (
       );
     }
   });
+};
