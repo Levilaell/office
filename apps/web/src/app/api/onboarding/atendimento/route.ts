@@ -4,6 +4,7 @@ import {
   appendAuditLog,
   completeTenantOnboarding,
   getCurrentTenant,
+  getCurrentTenantUserRole,
   getUserByClerkUserId,
   updateAgentAutonomyTier,
   type Json,
@@ -15,6 +16,12 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// Mesma whitelist do PATCH /api/configuracoes/agentes/[id] (Sprint 1.5).
+// Wizard pode ser disparado por qualquer admin/manager do tenant durante o
+// onboarding, mas NUNCA por basic_member — toca tier de autonomia que muda
+// comportamento sistêmico.
+const ALLOWED_ROLES = new Set(['owner_tenant', 'manager']);
 
 const BodySchema = z.object({
   bot_name: z.string().trim().min(1).max(80),
@@ -65,6 +72,19 @@ export async function PATCH(req: NextRequest) {
   const user = await getUserByClerkUserId(supabase, auth.userId);
   if (!user) {
     return NextResponse.json({ error: 'user not provisioned' }, { status: 403 });
+  }
+
+  // Symmetric com PATCH /api/configuracoes/agentes/[id]: tier de autonomia
+  // muda comportamento sistêmico; só admin/manager. Wizard normalmente roda
+  // pelo owner_tenant (criador da org no Clerk) então passa direto na maioria
+  // dos casos — protege contra basic_member adicionado durante onboarding
+  // pendente abusando do endpoint.
+  const role = await getCurrentTenantUserRole(supabase, user.id);
+  if (!role || !ALLOWED_ROLES.has(role)) {
+    return NextResponse.json(
+      { error: 'permission_denied', reason: 'somente owner/manager' },
+      { status: 403 },
+    );
   }
 
   const { bot_name, signature, business_hours, agent_tiers, skipped } = parsed.data;
