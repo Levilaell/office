@@ -130,6 +130,41 @@ só itens identificados durante implementação que merecem revisita.
 **Quando atacar:** Sprint quando segundo departamento (provavelmente Pessoal ou Fiscal) for ativado — sem desvio na Fase 1 com 1 departamento
 **Status:** documentado em ADR-019 (não é dívida ativa — é decisão consciente com critério de reabertura)
 
+### TD-021 🟢 leads.primary_contact_id sem FK (contacts não existe ainda)
+
+**Detectado em:** Sprint 1.4
+**Impacto:** referência opaca, sem enforce de integridade. Tolerável porque na Fase 1 ninguém escreve nesse campo (sempre null — Coordenador não cria contact estruturado, qualification_data.contact_name guarda nome em texto livre).
+**Solução:** quando tabela `contacts` for criada (Sprint 1.5+ ou Fase 2), adicionar FK via migration aditiva (`ALTER TABLE leads ADD CONSTRAINT leads_primary_contact_id_fkey FOREIGN KEY (primary_contact_id) REFERENCES contacts(id) ON DELETE SET NULL`).
+**Quando atacar:** sprint que criar tabela `contacts`.
+
+### TD-022 🟡 Especialista Comercial envia direto sem materializar message_drafts
+
+**Detectado em:** Sprint 1.4
+**Impacto:** inconsistente com o que Sprint 1.3 (paralelo, não rodou ainda) vai fazer pro Especialista Operacional. Operador humano não consegue ver "respostas automáticas do Comercial" via inbox de drafts. Audit_log registra o conteúdo em `especialista_comercial.turn`, então rastreabilidade não é perdida — só ergonomia de UI.
+**Solução:** quando Sprint 1.3 mergear e materializar `message_drafts`, o Sprint 1.5 unifica — Comercial passa a criar draft com `status='auto_approved'` antes de enviar via ChannelAdapter. UI de inbox surfaceia todos os agentes.
+**Quando atacar:** Sprint 1.5 (depende de Sprint 1.3 ter mergeado primeiro).
+
+### TD-023 🟢 leads sem unique partial index em (tenant_id, primary_conversation_id)
+
+**Detectado em:** Sprint 1.4 (advisor review)
+**Impacto:** dois turnos quase-simultâneos do Especialista Comercial podem criar dois leads pra mesma conversation se rodarem antes do primeiro commit. BullMQ dedup por messageId protege parcialmente; ainda fura se duas mensagens chegarem em rajada no início (sem lead pré-existente). Em volume Fase 1 (≤ 1 cliente real, leads esparsos), nunca acontece — risco real surge ao escalar.
+**Solução:** migration aditiva com `CREATE UNIQUE INDEX leads_one_per_conversation ON leads(tenant_id, primary_conversation_id) WHERE primary_conversation_id IS NOT NULL`. Repository code precisa tratar erro 23505 no `createLead` (retry via getLeadByConversationId).
+**Quando atacar:** Sprint 1.5 ou quando primeiro double-lead aparecer em produção.
+
+### TD-024 🟢 schedule-parser não converte sugestão de horário em Date
+
+**Detectado em:** Sprint 1.4
+**Impacto:** `parseScheduleSuggestion` detecta que cliente sugeriu horário mas retorna `scheduledAt=null`. Operador humano vê o texto em `leads.notes` e confirma manualmente com o cliente. Em volume baixo é tolerável; quando lead.scheduled_call_at virar gatilho de notificação/Calendar (Fase 2+), parser real vai precisar.
+**Solução:** parser robusto com tz America/Sao_Paulo, mapeamento de "terça da próxima semana" → Date concreto, handling de períodos do dia ("à tarde") como range/janela. Bibliotecas tipo chrono-node podem ajudar mas adicionam dep.
+**Quando atacar:** Fase 2 (integração com Calendar) ou Sprint 1.5+ quando humano reclamar do trabalho manual.
+
+### TD-025 🟢 display_settings sem campo commercial_lead_name
+
+**Detectado em:** Sprint 1.4
+**Impacto:** T10/T10b ("Vou agendar conversa com {{responsavel_name}}") usa `tenants.display_settings.signature` como fallback. Funciona ("Vou agendar com Equipe Levi Lael") mas semanticamente ruim — `signature` é assinatura de fechamento, não nome do responsável comercial. Quando o escritório tiver vários atendentes humanos, queremos referenciar a pessoa que vai assumir.
+**Solução:** adicionar `commercial_lead_name: string | null` em `display_settings`. `resolveDisplaySettings` retorna esse campo com fallback `signature || bot_name`. Especialista Comercial usa esse campo em vez de signature direto.
+**Quando atacar:** Sprint 1.5 (UI de display_settings) ou quando primeiro tenant pedir.
+
 ### TD-020 🟢 Pre-classify determinístico é mínimo
 
 **Detectado em:** Sprint 1.2 (2026-05-19)
