@@ -6,7 +6,7 @@ Guia pra subir o projeto do zero numa máquina nova. Pra contexto arquitetural, 
 
 ADR-012 e ADR-013 definem: **ambiente de dev é Cloud-first**.
 
-- Supabase: projeto cloud linkado via `supabase link --project-ref <ref>`. Toda migration vai com `pnpm exec supabase db push --linked`. Toda regeração de types vai com `pnpm exec supabase gen types typescript --linked > packages/shared-db/src/database.types.ts`.
+- Supabase: projeto cloud linkado via `supabase link --project-ref <ref>`. Toda migration vai com `pnpm exec supabase db push --linked`. Toda regeração de types vai com `pnpm db:types` (já configurado pra `--linked`). Pra regerar contra Supabase local em Docker, usa `pnpm db:types:local`.
 - Redis: instalado nativo no SO (apt/brew), não em container.
 - Docker NÃO é requisito de dev. Se você roda `pnpm db:start` (Supabase local em Docker), é opcional — útil pra teste isolado de schema ou pra rodar `db:diff` (que exige shadow DB).
 - Seeds e scripts assumem `SUPABASE_URL` apontando pro endpoint REST do projeto cloud (`<ref>.supabase.co`). Se colar URL de dashboard por engano, todos os seeds falham rápido com mensagem clara.
