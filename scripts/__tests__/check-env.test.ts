@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   check,
   checkApp,
+  findDrift,
   formatReport,
   parseEnvFile,
   parseExampleKeys,
@@ -172,5 +173,105 @@ describe('formatReport', () => {
     expect(report).toContain('apps/web/.env.local ausente');
     expect(report).toContain('- A');
     expect(report).toContain('- B');
+  });
+});
+
+describe('findDrift', () => {
+  it('sem drift quando valores idênticos', () => {
+    const drift = findDrift([
+      { name: 'web', envLocalContent: 'A=1\nB=2\n' },
+      { name: 'agent-runtime', envLocalContent: 'A=1\nB=2\n' },
+      { name: 'workers', envLocalContent: 'A=1\nB=2\n' },
+    ]);
+    expect(drift).toEqual([]);
+  });
+
+  it('detecta drift quando valor diverge entre apps', () => {
+    const drift = findDrift([
+      { name: 'web', envLocalContent: 'A=1\nB=2\n' },
+      { name: 'agent-runtime', envLocalContent: 'A=99\nB=2\n' },
+      { name: 'workers', envLocalContent: 'A=1\nB=2\n' },
+    ]);
+    expect(drift).toHaveLength(1);
+    expect(drift[0]?.key).toBe('A');
+    expect(drift[0]?.values).toEqual([
+      { app: 'web', value: '1' },
+      { app: 'agent-runtime', value: '99' },
+      { app: 'workers', value: '1' },
+    ]);
+  });
+
+  it('chave presente em só um app não conta como drift', () => {
+    const drift = findDrift([
+      { name: 'web', envLocalContent: 'ONLY_WEB=x\nA=1\n' },
+      { name: 'agent-runtime', envLocalContent: 'A=1\n' },
+      { name: 'workers', envLocalContent: 'A=1\n' },
+    ]);
+    expect(drift).toEqual([]);
+  });
+
+  it('chave vazia em um app ignorada na comparação', () => {
+    const drift = findDrift([
+      { name: 'web', envLocalContent: 'A=1\n' },
+      { name: 'agent-runtime', envLocalContent: 'A=\n' },
+      { name: 'workers', envLocalContent: 'A=1\n' },
+    ]);
+    expect(drift).toEqual([]);
+  });
+
+  it('múltiplas chaves divergentes ficam ordenadas alfabeticamente', () => {
+    const drift = findDrift([
+      { name: 'web', envLocalContent: 'Z=1\nA=1\n' },
+      { name: 'agent-runtime', envLocalContent: 'Z=2\nA=2\n' },
+      { name: 'workers', envLocalContent: 'Z=1\nA=1\n' },
+    ]);
+    expect(drift.map((d) => d.key)).toEqual(['A', 'Z']);
+  });
+});
+
+describe('check + drift integration', () => {
+  it('drift entre apps faz ok=false mesmo com todas as chaves presentes', () => {
+    const r = check({
+      exampleContent: 'A=x\n',
+      apps: [
+        { name: 'web', envLocalContent: 'A=1\n' },
+        { name: 'agent-runtime', envLocalContent: 'A=2\n' },
+        { name: 'workers', envLocalContent: 'A=1\n' },
+      ],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.drift).toHaveLength(1);
+    expect(r.drift[0]?.key).toBe('A');
+  });
+
+  it('formatReport menciona drift de valor explicitamente', () => {
+    const r = check({
+      exampleContent: 'A=x\n',
+      apps: [
+        { name: 'web', envLocalContent: 'A=1\n' },
+        { name: 'agent-runtime', envLocalContent: 'A=99\n' },
+        { name: 'workers', envLocalContent: 'A=1\n' },
+      ],
+    });
+    const report = formatReport(r);
+    expect(report).toContain('drift de valor');
+    expect(report).toContain('TD-006');
+    expect(report).toContain('A:');
+  });
+
+  it('formatReport trunca valores longos pra evitar despejar secrets', () => {
+    const longA = 'a'.repeat(100);
+    const longB = 'b'.repeat(100);
+    const r = check({
+      exampleContent: 'A=x\n',
+      apps: [
+        { name: 'web', envLocalContent: `A=${longA}\n` },
+        { name: 'agent-runtime', envLocalContent: `A=${longB}\n` },
+        { name: 'workers', envLocalContent: `A=${longA}\n` },
+      ],
+    });
+    const report = formatReport(r);
+    expect(report).toContain('...');
+    expect(report.includes(longA)).toBe(false);
   });
 });

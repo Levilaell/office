@@ -42,7 +42,11 @@ cp .env.example apps/agent-runtime/.env.local
 cp .env.example apps/workers/.env.local
 ```
 
-Preencher os valores em cada cópia (todos com o mesmo conteúdo — tech debt conhecido, fonte única em backlog).
+Preencher os valores em cada cópia (todos com o mesmo conteúdo — tech debt conhecido TD-006).
+
+`pnpm check-env` valida que:
+1. Toda chave em `.env.example` aparece preenchida em cada app.
+2. **Não há drift** entre apps: chaves que aparecem em mais de um `.env.local` têm valor idêntico. Falha rápido com mensagem clara se você atualizou um app e esqueceu dos outros.
 
 Para que servem as 15 vars está comentado no próprio `.env.example`. Resumo das pegadinhas:
 

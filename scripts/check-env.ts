@@ -1,7 +1,15 @@
 /**
  * Valida que `.env.local` de cada app (web, agent-runtime, workers) tem todas
- * as chaves declaradas em `.env.example` na raiz. Sai com código 1 se faltar
- * qualquer chave; 0 se tudo OK.
+ * as chaves declaradas em `.env.example` na raiz E detecta drift de valores
+ * entre arquivos.
+ *
+ * Drift é o sintoma diagnosticado pelo Sprint Fase 2-prep (TD-006): os 3 apps
+ * mantêm `.env.local` idênticos por convenção mas, na prática, divergem
+ * silenciosamente quando alguém atualiza só um deles. Esta função compara, pra
+ * cada chave compartilhada por >= 2 apps, se o valor é o mesmo. Falha rápido
+ * com mensagem clara.
+ *
+ * Sai com código 1 se faltar qualquer chave OU se houver drift; 0 se tudo OK.
  *
  * Uso:
  *   pnpm check-env
@@ -22,9 +30,15 @@ export interface AppCheckResult {
   missing: string[];
 }
 
+export interface DriftEntry {
+  key: string;
+  values: { app: AppName; value: string }[];
+}
+
 export interface CheckResult {
   ok: boolean;
   apps: AppCheckResult[];
+  drift: DriftEntry[];
 }
 
 /**
@@ -82,6 +96,41 @@ export function checkApp(input: CheckAppInput): AppCheckResult {
   return { app: input.app, envLocalPresent: true, missing };
 }
 
+/**
+ * Detecta divergência de valor entre `.env.local` dos apps. Pra cada chave
+ * que aparece preenchida em >= 2 apps, compara valores. Apps que não têm a
+ * chave (ou têm vazia) são ignorados — quem decide se é obrigatória é o
+ * `checkApp` (cruzamento com `.env.example`).
+ */
+export function findDrift(
+  apps: { name: AppName; envLocalContent: string | null }[],
+): DriftEntry[] {
+  const parsed = apps.map((a) => ({
+    name: a.name,
+    envs: a.envLocalContent === null ? new Map<string, string>() : parseEnvFile(a.envLocalContent),
+  }));
+
+  const allKeys = new Set<string>();
+  for (const a of parsed) for (const k of a.envs.keys()) allKeys.add(k);
+
+  const drift: DriftEntry[] = [];
+  for (const key of allKeys) {
+    const present = parsed
+      .map((a) => {
+        const v = a.envs.get(key);
+        return v && v.length > 0 ? { app: a.name, value: v } : null;
+      })
+      .filter((x): x is { app: AppName; value: string } => x !== null);
+    if (present.length < 2) continue;
+    const first = present[0]!.value;
+    const diverges = present.some((p) => p.value !== first);
+    if (diverges) {
+      drift.push({ key, values: present });
+    }
+  }
+  return drift.sort((a, b) => a.key.localeCompare(b.key));
+}
+
 export interface CheckInput {
   exampleContent: string;
   apps: { name: AppName; envLocalContent: string | null }[];
@@ -92,9 +141,12 @@ export function check(input: CheckInput): CheckResult {
   const apps = input.apps.map((a) =>
     checkApp({ app: a.name, envLocalContent: a.envLocalContent, exampleKeys })
   );
+  const drift = findDrift(input.apps);
+  const allFilled = apps.every((a) => a.envLocalPresent && a.missing.length === 0);
   return {
-    ok: apps.every((a) => a.envLocalPresent && a.missing.length === 0),
+    ok: allFilled && drift.length === 0,
     apps,
+    drift,
   };
 }
 
@@ -112,6 +164,20 @@ export function formatReport(result: CheckResult): string {
     lines.push(`✗ apps/${app.app}/.env.local sem as chaves:`);
     for (const k of app.missing) lines.push(`  - ${k}`);
   }
+  if (result.drift.length > 0) {
+    lines.push(
+      `✗ drift de valor entre apps (mesma chave, valores diferentes — TD-006):`,
+    );
+    for (const entry of result.drift) {
+      lines.push(`  - ${entry.key}:`);
+      for (const v of entry.values) {
+        // Trunca valor pra evitar despejar secret em log de CI.
+        const snippet =
+          v.value.length > 40 ? `${v.value.slice(0, 37)}...` : v.value;
+        lines.push(`      apps/${v.app}/.env.local = "${snippet}"`);
+      }
+    }
+  }
   return lines.join('\n');
 }
 
@@ -126,7 +192,7 @@ export interface RunFromDiskResult extends CheckResult {
 export function runFromDisk(rootDir: string): RunFromDiskResult {
   const examplePath = resolve(rootDir, '.env.example');
   if (!existsSync(examplePath)) {
-    return { ok: false, exampleFound: false, apps: [] };
+    return { ok: false, exampleFound: false, apps: [], drift: [] };
   }
   const exampleContent = readFileSync(examplePath, 'utf-8');
   const apps = APPS.map((name) => ({
