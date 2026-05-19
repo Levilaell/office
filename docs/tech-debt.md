@@ -188,6 +188,14 @@ Worker de expiração cobre eventualmente (15 min default) mas até lá fica vis
 **Solução:** componente DiffViewer (libs como react-diff-viewer ou implementação custom com diff-match-patch). Mostra side-by-side ou inline.
 **Quando atacar:** Sprint 1.6+ quando primeiro tenant pedir ou eval de promoção de prompt depender de revisão das edições.
 
+### TD-029 🟡 Janela <50ms entre read-and-send permite duplicate send
+
+**Detectado em:** Sprint 1.5 (advisor review pós-implementação)
+**Impacto:** endpoint `/decide` faz `getDraftById` → `sendAgentMessage` → `approveDraftWithMessage`. Entre a leitura e o send, outro operador concorrente pode ler o mesmo draft pending e disparar o seu próprio send. Ambos enviam, só o primeiro `approveDraftWithMessage` muda status — o segundo retorna 409 com `sentMessageId` no body, mas a mensagem dele JÁ FOI pro cliente. Cliente recebe 2 mensagens.
+Em Fase 1 (1-2 operadores ativos por tenant) a probabilidade é baixa, mas existe.
+**Solução:** padrão "claim atomic → send → complete". UPDATE atômico marcaria `status='approving'` ANTES de enviar; segunda chamada falha no claim com 409 e nunca envia. Após send, UPDATE final pra `approved`. Custa 1 round-trip a mais por aprovação.
+**Quando atacar:** quando primeiro duplicate send aparecer (audit_log mostra 2 mensagens outbound com mesmo `source_message_id`) OU quando primeiro tenant com >3 operadores simultâneos chegar.
+
 ---
 
 ## Itens fechados

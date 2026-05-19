@@ -115,8 +115,12 @@ export type TenantRole =
   Database['public']['Tables']['tenant_users']['Row']['role'];
 
 /**
- * Lê o role do user no tenant ativo (via RLS — JWT já restringe ao tenant
- * corrente). Retorna null se user não tem membership no tenant ativo.
+ * Lê o role do user no tenant ativo. RLS na tabela `tenant_users` filtra por
+ * `tenant_id = current_tenant_id()` (ver migration 20260515073314_rls_policies),
+ * então mesmo se o user fizer membership em N tenants, só vemos a linha do
+ * tenant corrente do JWT. `.maybeSingle()` é seguro.
+ *
+ * Retorna null se user não tem membership no tenant ativo.
  *
  * Usado em endpoints que exigem permissão (mudar tier de autonomia,
  * configurações sensíveis): rejeita se role não está na whitelist.
