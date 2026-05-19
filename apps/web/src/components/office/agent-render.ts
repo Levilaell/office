@@ -12,4 +12,7 @@ export type RenderAgent = {
   role: AgentRole;
   state: AgentState;
   tilePos: { x: number; y: number };
+  /** Sprint 1.6 — drafts pending vinculados a este agente. Renderiza badge
+   *  laranja sobre o avatar com contador. Zero = sem badge. */
+  pendingDraftCount: number;
 };

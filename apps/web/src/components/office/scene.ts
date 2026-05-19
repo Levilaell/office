@@ -205,27 +205,22 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
       container.zIndex = s.y;
       container.alpha = visual.alpha;
 
-      // Sombra
+      // Sombra (fica abaixo do avatar — não escala junto)
       const shadow = new Graphics();
       shadow.ellipse(0, 2, 12, 4).fill({ color: 0x000000, alpha: 0.4 });
       container.addChild(shadow);
 
-      if (visual.ring) {
-        const ring = new Graphics();
-        ring.circle(0, -10, 16).stroke({ color: visual.color, width: 2 });
-        container.addChild(ring);
+      // Sub-container do avatar (body + ring). Pulse aplica scale aqui só,
+      // poupando a label que ficaria distorcida se escalássemos o container raiz.
+      const avatar = new Container();
+      avatar.label = 'avatar';
+      container.addChild(avatar);
 
-        if (visual.ring === 'pulse') {
-          let elapsed = 0;
-          const cb: TickerCallback<unknown> = (ticker) => {
-            elapsed += ticker.deltaMS / 1000;
-            const scale = 1 + Math.sin(elapsed * 3) * 0.18;
-            ring.scale.set(scale, scale);
-            ring.alpha = 0.55 + Math.cos(elapsed * 3) * 0.3;
-          };
-          app.ticker.add(cb);
-          tickerCallbacks.push(cb);
-        }
+      let ring: Graphics | null = null;
+      if (visual.ring) {
+        ring = new Graphics();
+        ring.circle(0, -10, 16).stroke({ color: visual.color, width: 2 });
+        avatar.addChild(ring);
       }
 
       const body = new Graphics();
@@ -233,7 +228,51 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
         .circle(0, -10, 12)
         .fill({ color: visual.color })
         .stroke({ color: 0x2e3440, width: 1 });
-      container.addChild(body);
+      avatar.addChild(body);
+
+      // Ticker unificado por avatar: aplica pulse de scale no `avatar`
+      // sub-container (body+ring) + animação de alpha no ring quando em pulse.
+      // Single ticker por agente em vez de um por elemento.
+      if (visual.ring === 'pulse') {
+        let elapsed = 0;
+        const ringCapture = ring;
+        const cb: TickerCallback<unknown> = (ticker) => {
+          elapsed += ticker.deltaMS / 1000;
+          const scale = 1 + Math.sin(elapsed * 3) * 0.05;
+          avatar.scale.set(scale, scale);
+          if (ringCapture) {
+            const ringScale = 1 + Math.sin(elapsed * 3) * 0.18;
+            ringCapture.scale.set(ringScale, ringScale);
+            ringCapture.alpha = 0.55 + Math.cos(elapsed * 3) * 0.3;
+          }
+        };
+        app.ticker.add(cb);
+        tickerCallbacks.push(cb);
+      }
+
+      // Badge de drafts pending (laranja, sobre o avatar, top-right).
+      if (agent.pendingDraftCount > 0) {
+        const badge = new Container();
+        badge.label = 'pending-drafts-badge';
+        const bg = new Graphics();
+        bg.circle(0, 0, 8).fill({ color: 0xf07746 }).stroke({ color: 0x0a0a0a, width: 1 });
+        badge.addChild(bg);
+        const countText = new Text({
+          text: agent.pendingDraftCount > 9 ? '9+' : String(agent.pendingDraftCount),
+          style: {
+            fontFamily: 'sans-serif',
+            fontSize: 10,
+            fontWeight: '700',
+            fill: 0xffffff,
+          },
+        });
+        countText.anchor.set(0.5);
+        badge.addChild(countText);
+        // Posicionado no canto superior direito do corpo (offset relativo ao
+        // centro do corpo que está em y=-10).
+        badge.position.set(11, -19);
+        container.addChild(badge);
+      }
 
       const label = new Text({
         text: agent.name,

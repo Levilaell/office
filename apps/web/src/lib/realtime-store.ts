@@ -371,3 +371,38 @@ export const usePendingDraftByConversation = (
 
 export const useDraft = (id: string | null | undefined): DraftSnapshot | null =>
   useRealtimeStore((s) => (id ? (s.drafts[id] ?? null) : null));
+
+// Sprint 1.6 — helpers puros pra contar drafts pending. Extraídos como
+// funções puras (sem hook) pra serem testáveis sem testing-library.
+export const countPendingDraftsForAgent = (
+  drafts: Record<string, DraftSnapshot>,
+  agentId: string,
+): number => {
+  let count = 0;
+  for (const d of Object.values(drafts)) {
+    if (d.agentId === agentId && d.status === 'pending') count += 1;
+  }
+  return count;
+};
+
+export const groupPendingDraftCountsByAgent = (
+  drafts: Record<string, DraftSnapshot>,
+): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const d of Object.values(drafts)) {
+    if (d.status !== 'pending') continue;
+    out[d.agentId] = (out[d.agentId] ?? 0) + 1;
+  }
+  return out;
+};
+
+// Count de drafts pending vinculados a um agente. Usado pelo canvas pra
+// render badge sobre o avatar do agente. Retorna primitivo (number) —
+// não precisa de useShallow, identidade é estável trivialmente.
+export const useAgentDraftCount = (agentId: string): number =>
+  useRealtimeStore((s) => countPendingDraftsForAgent(s.drafts, agentId));
+
+// Mapa agentId → count usado por componentes que precisam de todas as contagens
+// em um único snapshot (ex: passar pro PixiJS scene em batch).
+export const useDraftCountsByAgent = (): Record<string, number> =>
+  useRealtimeStore(useShallow((s) => groupPendingDraftCountsByAgent(s.drafts)));
