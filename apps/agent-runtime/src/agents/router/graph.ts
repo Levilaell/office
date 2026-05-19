@@ -200,10 +200,16 @@ export const buildRouterGraph = (ctx: AgentContext) => {
   ): Promise<Partial<RouterGraphUpdate>> => {
     // Sem classificação válida ou sem identificação de mensagem inbound,
     // o node não publica nem audita. Triagem interna (legacy) cai aqui.
-    if (state.classification === null) return {};
+    //
+    // `== null` (double equals) cobre TANTO null QUANTO undefined: quando o
+    // validate node detecta JSON inválido, ele retorna { validationError }
+    // sem setar `classification` — o canal Annotation fica em `undefined`
+    // (não null). Strict equality (`=== null`) deixaria passar nesse caso e
+    // o acesso a `state.classification.confidence` crasharia.
+    if (state.classification == null) return {};
     if (
-      state.conversationId === null ||
-      state.messageId === null ||
+      state.conversationId == null ||
+      state.messageId == null ||
       ctx.accountId === null
     ) {
       return {};
