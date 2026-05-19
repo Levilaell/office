@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_TIER_TO_MODEL, type AgentTier, type LlmModelId } from './constants.js';
+import { DEFAULT_TIER_TO_MODEL, type AgentTier, type LlmModelId } from './constants';
 
 const baseEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
