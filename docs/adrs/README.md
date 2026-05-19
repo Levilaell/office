@@ -22,6 +22,11 @@ Decisões arquiteturais da Plataforma Contábil em ordem cronológica. Formato: 
 - [ADR-016](016-coordenador-atendimento-roteamento.md) — Coordenador de Atendimento como camada de roteamento de departamento
 - [ADR-017](017-modo-shadow-tiers-autonomia.md) — Modo shadow e tiers de autonomia em conversa síncrona
 - [ADR-018](018-shared-domain-depends-on-shared-events.md) — `shared-domain` pode depender de `shared-events`
+- [ADR-022](022-workflow-engine.md) — Workflow engine para processos de longa duração no Societário (BullMQ + cron na Fase 2; Temporal como escalada planejada)
+- [ADR-023](023-topologia-agentes-societario.md) — Topologia de agentes do Societário (Coordenador + Orquestrador + Especialistas + Portal Adapters)
+- [ADR-024](024-schema-legal-processes.md) — Esboço de schema de processos legais (`legal_processes`, `process_steps`, extensões a `documents`/`obligations`)
+
+> **Numeração**: ADR-020 e ADR-021 reservados/não criados. ADR-021 (RPA strategy) explicitamente não justificado no Sprint Fase 2.0-discovery — ver `docs/discovery/societario-rpa-nao-justificado.md`. ADR-020 é gap intencional no histórico (sem decisão arquitetural a registrar entre 019 e 022).
 
 ## Superseded
 
