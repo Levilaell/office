@@ -56,8 +56,8 @@ Sprints estimados × 2-3 semanas cada. Atendimento (real) foi ~3 meses com 6-7 s
 
 **Observações:**
 
-- **Atendimento é o único com `%` real**, não estimado. Os outros são chute fundamentado (matrizes de 25-33 linhas por departamento).
-- **Soma de tempo estimado** dos 5 restantes = **17-25 meses** se sequencial. Compatível com a estimativa macro de `escopo-produto.md` (16-20 meses pra plataforma completa, contando Fase 0 + Fase 1 já feitos).
+- **Atendimento é o único com `%` real**, não estimado. Os outros são chute fundamentado (matrizes de 25-33 linhas por departamento). **Atenção sobre comparação:** o 73% do Atendimento é "% efetivamente entregue na Fase 1" (status real); os 56-66% dos outros são "% potencial estimado pela matriz". Não comparar como se fossem a mesma métrica — o gap não significa que Atendimento é mais automatizável, e sim que ele já foi feito enquanto os outros são estimativa de potencial.
+- **Soma de tempo estimado** dos 5 restantes = **17-25 meses** se sequencial. Somando Fase 0 + 1 já consumidas (~3 meses), total fica em **20-28 meses contra 16-20 meses originais** do `escopo-produto.md` — **slippage de 4-8 meses (20-40%)**. Razão: complexidade real dos departamentos maior que a assumida (Societário precisa de Orquestrador novo; Fiscal tem heterogeneidade ICMS por UF maior) + Levi solo sem capacidade de paralelizar. Sócio merece ver esse número antes de comprometer expectativa.
 - **Mais alto risco regulatório:** Fiscal. **Mais alto volume:** Contábil. **Maior dor:** Pessoal e Fiscal (empatados).
 - **Único com Volume Baixo:** Societário — compensa parcialmente pela ausência de competição forte na automação de processos societários.
 
@@ -144,7 +144,7 @@ Premissa: pouco tempo × alto impacto = vitória rápida. Tempo longo só vale c
 
 4. **Societário é o único de complexidade arquitetural alta com risco médio.** Permite validar padrões novos (Orquestrador, workflow engine, Portal Adapter) num cenário de risco menor antes de aplicar em Pessoal/Fiscal — onde erro arquitetural tem custo regulatório maior.
 
-5. **Financeiro Interno é "leve" em complexidade técnica e baixo em risco**, mas atende um comprador diferente (o sócio do escritório, não o cliente final). Pode rodar **em paralelo** com qualquer um dos outros porque reusa muito (Pessoal/Contábil/Fiscal aplicados ao CNPJ do próprio escritório). Não disputa equipe técnica.
+5. **Financeiro Interno é "leve" em complexidade técnica e baixo em risco**, mas atende um comprador diferente (o sócio do escritório, não o cliente final). Pode rodar **intercalado** entre sprints grandes (sprint curto de 3-5 semanas) porque reusa muito (Pessoal/Contábil/Fiscal aplicados ao CNPJ do próprio escritório). Não disputa capacidade técnica com sprint principal — mas como Levi é solo, não é literalmente "em paralelo".
 
 6. **Complexidade técnica e risco regulatório NÃO se correlacionam totalmente.** Societário tem complexidade alta com risco médio (humano sempre protocola). Pessoal tem complexidade média com risco alto. Não dá pra usar uma como proxy da outra.
 
@@ -181,7 +181,7 @@ Premissa: pouco tempo × alto impacto = vitória rápida. Tempo longo só vale c
 | Pessoal "alto valor, risco médio" | Médio risco | **Alto** risco (eSocial, rescisão, multa por evento) | **Diverge**. Risco real mais alto que o assumido. Mas tier conservador resolve. |
 | Contábil "núcleo, risco médio-alto" | Médio-alto risco | **Médio** risco regulatório direto, mas alto risco de venda (núcleo da identidade do escritório) | **Diverge**. Risco regulatório direto menor; risco de venda maior. |
 | Fiscal "maior risco, por último" | ✅ | ✅ Altíssimo risco confirmado | **Confirma**. Último faz sentido. |
-| Financeiro Interno "em paralelo" | ✅ | ✅ Reusa Pessoal/Contábil/Fiscal aplicados ao próprio CNPJ; pode rodar em paralelo | **Confirma**. |
+| Financeiro Interno "em paralelo" | ✅ | ✅ Reusa Pessoal/Contábil/Fiscal aplicados ao próprio CNPJ; sprint curto cabe **intercalado** entre sprints grandes (Levi é solo, não é simultâneo literal) | **Confirma com ajuste de linguagem**. |
 
 ### Diferenças que sugerem revisão da ordem
 
@@ -198,7 +198,7 @@ Resposta honesta: **Pessoal em 2º faria mais sentido por dor e volume.** Mas a 
 ### O que muda da ordem original
 
 - Confirma Atendimento → Societário → Pessoal → Contábil → Fiscal como ordem viável
-- Reposiciona Financeiro Interno: pode rodar **em paralelo** ou **mais cedo** se sócio decisor único quiser auto-servir antes de oferecer pra cliente
+- Reposiciona Financeiro Interno: sprint curto **intercalado** entre sprints grandes (Levi é solo) ou **mais cedo** se sócio decisor único quiser auto-servir antes de oferecer pra cliente
 - Reforça que **Sociedade em 2º não é "baixo risco como original"; é "complexidade arquitetural antes de risco alto"** — ajuste de justificativa, não de posição
 
 A recomendação completa, com cenários alternativos justificados, fica em `docs/discovery/departamentos-recomendacao-ordem.md`.

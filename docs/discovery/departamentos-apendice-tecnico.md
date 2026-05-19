@@ -320,10 +320,10 @@ Quando Sprint X.0-discovery de departamento abrir, este apêndice é a base.
 
 ### Dependências
 - Habilita: vitrine pro sócio (decisor único)
-- Depende de: idealmente Pessoal (folha interna) e Fiscal (DAS interno) já entregues; mas pode rodar em paralelo com versão "manual" desses sub-passos
+- Depende de: idealmente Pessoal (folha interna) e Fiscal (DAS interno) já entregues; mas pode rodar **intercalado** com versão "manual" desses sub-passos
 
 ### Particularidade
-- **Pode rodar em paralelo** a partir do meio da Fase 2 (Sprint 2.3+). Capacidade técnica baixa, reusa muito. Vende ao sócio.
+- **Pode rodar intercalado** entre dois sprints grandes a partir do meio da Fase 2 (Sprint 2.3+ → curto Financeiro Interno → Sprint 2.4, por exemplo). Capacidade técnica baixa, reusa muito. Vende ao sócio. **Levi é solo — "paralelo" é literal "intercalado", não simultâneo.**
 
 ---
 

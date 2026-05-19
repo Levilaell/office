@@ -13,7 +13,7 @@
 3. **Pessoal/Folha** — depois dos padrões validados, ataca o maior par "dor × alavancagem" do produto
 4. **Contábil** — núcleo do escritório, posicionamento como amplificação (lançamento/conciliação), não substituição (política/fechamento)
 5. **Fiscal** — último porque tem o maior risco regulatório do nicho; só faz sentido com plataforma madura nos outros departamentos
-6. **Financeiro Interno** — **em paralelo a qualquer um** ou intercalado. Comprador é o sócio (decisor único). Pode virar vitrine na demo comercial inicial
+6. **Financeiro Interno** — **intercalado** entre sprints grandes (sprint curto de 3-5 semanas que cabe entre o fim de Societário e o início de Pessoal, por exemplo). Comprador é o sócio (decisor único). Pode virar vitrine na demo comercial inicial. **Importante: você é solo, não há capacidade de rodar dois sprints simultâneos — "intercalado" é literal, não "em paralelo"**
 
 ## Seção 2 — Por que essa ordem (longo)
 
@@ -53,16 +53,18 @@ Maior risco regulatório do produto (multa multiplicadora 50-225%, sanção CFC,
 
 Por isso a ordem original já colocava Fiscal por último, e a descoberta confirma.
 
-### Por que Financeiro Interno em paralelo / vitrine
+### Por que Financeiro Interno intercalado / vitrine
 
 Tem **complexidade técnica baixa** (reusa muito do Pessoal/Contábil/Fiscal aplicado ao próprio CNPJ do escritório) e **risco regulatório baixo** (erro interno é corrigível, sem multa de Receita). Comprador é o **sócio**, decisor único, ciclo curto.
 
+**Atenção tática:** você é dev solo. Não há capacidade real de rodar dois sprints simultaneamente — "intercalado" é literal. O sprint de Financeiro Interno é curto (3-5 semanas, vide apêndice técnico) e cabe entre sprints maiores: por exemplo, entre fim do Sprint 2.5 do Societário e início do Sprint 3.1 do Pessoal. Ou entre Pessoal e Contábil. Não significa "simultâneo".
+
 Duas opções táticas:
 
-- **(a) Em paralelo** com Societário/Pessoal/etc, como módulo "leve" da plataforma — ocupa pouca capacidade técnica e produz valor pro sócio.
+- **(a) Intercalado** entre Societário e Pessoal (ou entre Pessoal e Contábil), como módulo "leve" da plataforma — ocupa pouca capacidade técnica e produz valor pro sócio.
 - **(b) Como vitrine inicial** — sócio do escritório-cliente ativa pra ele primeiro (folha do próprio escritório, faturamento, indicadores), valida o produto consigo mesmo, depois ativa pros clientes finais. Argumento de venda fortíssimo: "use você primeiro pra ver".
 
-Recomendação concreta: opção (a) — em paralelo a partir do meio da Fase 2 ou início Fase 3. Opção (b) só se o sócio mostrar interesse específico em testar antes de oferecer ao cliente.
+Recomendação concreta: opção (a) — intercalado a partir do meio da Fase 2 ou início Fase 3. Opção (b) só se o sócio mostrar interesse específico em testar antes de oferecer ao cliente.
 
 ### Como essa sequência protege o produto
 
@@ -70,7 +72,7 @@ Recomendação concreta: opção (a) — em paralelo a partir do meio da Fase 2 
 - **Sprint 3.x (Pessoal)** aplica padrões testados em departamento de alta dor — operador percebe valor rápido. Calendário de obrigações compartilhado já populado.
 - **Sprint 4.x (Contábil)** aplica padrões + adapters de sistema legado num departamento de risco moderado mas com volume gigante (alavancagem).
 - **Sprint 5.x (Fiscal)** chega com plataforma madura. Tier conservador. Calendário + integrações + adapters + modo shadow tudo testado.
-- **Sprint paralelo (Financeiro Interno)** roda em qualquer momento depois do início da Fase 2 — sócio do escritório vê valor cedo.
+- **Sprint intercalado (Financeiro Interno)** roda entre dois sprints grandes (ex: Sprint 2.5 → curto Financeiro Interno → Sprint 3.1) — sócio do escritório vê valor cedo sem disputar capacidade técnica com sprint principal.
 
 ### Como essa sequência maximiza valor comercial
 
@@ -198,4 +200,4 @@ Se departamento escolhido é Societário e as 11 perguntas críticas (`docs/disc
 
 ## Resumo da recomendação em 1 frase
 
-**Mantenha a ordem original (Atendimento ✅ → Societário → Pessoal → Contábil → Fiscal) com Financeiro Interno em paralelo a partir da metade da Fase 2, mas justifique Societário em 2º pela complexidade arquitetural progressiva (Orquestrador novo em risco médio antes de risco alto), não pelo motivo da ordem original.**
+**Mantenha a ordem original (Atendimento ✅ → Societário → Pessoal → Contábil → Fiscal) com Financeiro Interno intercalado entre sprints grandes a partir da metade da Fase 2, mas justifique Societário em 2º pela complexidade arquitetural progressiva (Orquestrador novo em risco médio antes de risco alto), não pelo motivo da ordem original.**

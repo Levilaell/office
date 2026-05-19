@@ -197,4 +197,4 @@ Início do mês X
 - Complexidade técnica: **Baixa** (reusa muito do Pessoal/Contábil/Fiscal — escritório vira "cliente de si mesmo"; integrações são NFS-e municipal e gateway de pagamento)
 - Tempo de implementação: 3-5 sprints × 2-3 semanas ≈ **2-3 meses** [estimativa]
 - Risco de venda: **Baixo a sócio (decisor único, vê valor), médio em escritório pequeno (sócio faz tudo)**
-- **Particularidade:** atende o sócio, não cliente. Pode ir em paralelo a outros departamentos como módulo "leve" da plataforma
+- **Particularidade:** atende o sócio, não cliente. Sprint curto (3-5 semanas) cabe **intercalado** entre sprints grandes de outros departamentos como módulo "leve" da plataforma — Levi é solo, então "paralelo" é literal "intercalado"
