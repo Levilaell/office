@@ -9,6 +9,8 @@ import type {
   ApprovalSnapshot,
   ChannelSessionSnapshot,
   ConversationSnapshot,
+  DraftSnapshot,
+  DraftStatus,
   InitialSnapshot,
   LeadSnapshot,
   LeadStatus,
@@ -57,6 +59,15 @@ const refetchLeads = async (): Promise<LeadSnapshot[]> => {
   return body.leads;
 };
 
+const refetchDrafts = async (): Promise<DraftSnapshot[]> => {
+  const r = await fetch('/api/atendimento/drafts?status=pending', {
+    cache: 'no-store',
+  });
+  if (!r.ok) throw new Error(`drafts fetch failed: ${r.status}`);
+  const body = (await r.json()) as { drafts: DraftSnapshot[] };
+  return body.drafts;
+};
+
 const ALLOWED_LEAD_STATUSES: ReadonlyArray<LeadStatus> = [
   'new',
   'qualifying',
@@ -69,6 +80,18 @@ const ALLOWED_LEAD_STATUSES: ReadonlyArray<LeadStatus> = [
 
 const isLeadStatus = (v: unknown): v is LeadStatus =>
   typeof v === 'string' && (ALLOWED_LEAD_STATUSES as readonly string[]).includes(v);
+
+const ALLOWED_DRAFT_STATUSES: ReadonlyArray<DraftStatus> = [
+  'pending',
+  'approved',
+  'rejected',
+  'edited',
+  'expired',
+  'auto_approved',
+];
+
+const isDraftStatus = (v: unknown): v is DraftStatus =>
+  typeof v === 'string' && (ALLOWED_DRAFT_STATUSES as readonly string[]).includes(v);
 
 export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const { isLoaded, isSignedIn, orgId, getToken } = useAuth();
@@ -91,6 +114,9 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   );
   const replaceLeads = useRealtimeStore((s) => s.replaceLeads);
   const updateLeadStatus = useRealtimeStore((s) => s.updateLeadStatus);
+  const replaceDrafts = useRealtimeStore((s) => s.replaceDrafts);
+  const updateDraftStatus = useRealtimeStore((s) => s.updateDraftStatus);
+  const removeDraft = useRealtimeStore((s) => s.removeDraft);
 
   // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
   useEffect(() => {
@@ -249,6 +275,59 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
           .catch((err) => console.error('[realtime] refetch leads', err));
       });
 
+      // Sprint 1.5 — drafts. created/approved/edited/rejected/expired.
+      // Estratégia: payload tem campos suficientes pra delta inteligente,
+      // mas refetch é mais robusto (lista de pending muda) e mais simples
+      // do que merge condicional por status. Trade-off conhecido (TD-003).
+      const onDraftChanged = (): void => {
+        refetchDrafts()
+          .then(replaceDrafts)
+          .catch((err) => console.error('[realtime] refetch drafts', err));
+      };
+      socket.on('draft.created', onDraftChanged);
+      socket.on('draft.approved', (payload: unknown) => {
+        if (payload && typeof payload === 'object') {
+          const p = payload as { draftId?: unknown };
+          if (typeof p.draftId === 'string') {
+            // Aplica delta direto: vira approved E sai da lista pending.
+            updateDraftStatus(p.draftId, 'approved');
+            removeDraft(p.draftId);
+          }
+        }
+        onDraftChanged();
+      });
+      socket.on('draft.edited', (payload: unknown) => {
+        if (payload && typeof payload === 'object') {
+          const p = payload as { draftId?: unknown };
+          if (typeof p.draftId === 'string') {
+            updateDraftStatus(p.draftId, 'edited');
+            removeDraft(p.draftId);
+          }
+        }
+        onDraftChanged();
+      });
+      socket.on('draft.rejected', (payload: unknown) => {
+        if (payload && typeof payload === 'object') {
+          const p = payload as { draftId?: unknown };
+          if (typeof p.draftId === 'string') {
+            updateDraftStatus(p.draftId, 'rejected');
+            removeDraft(p.draftId);
+          }
+        }
+        onDraftChanged();
+      });
+      socket.on('draft.expired', (payload: unknown) => {
+        if (payload && typeof payload === 'object') {
+          const p = payload as { draftId?: unknown; status?: unknown };
+          if (typeof p.draftId === 'string') {
+            const status = isDraftStatus(p.status) ? p.status : 'expired';
+            updateDraftStatus(p.draftId, status);
+            removeDraft(p.draftId);
+          }
+        }
+        onDraftChanged();
+      });
+
       // channel_session.status_changed: aplicação direta do delta (payload
       // tem status novo). Refetch como fallback se status vier inválido.
       socket.on('channel_session.status_changed', (payload: unknown) => {
@@ -294,6 +373,9 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     updateChannelSessionStatus,
     replaceLeads,
     updateLeadStatus,
+    replaceDrafts,
+    updateDraftStatus,
+    removeDraft,
   ]);
 
   return <>{children}</>;

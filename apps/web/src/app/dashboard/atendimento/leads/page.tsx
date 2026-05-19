@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useLeads } from '@/lib/realtime-store';
+import { useLeads, usePendingDraftByConversation } from '@/lib/realtime-store';
 import { relativeTime } from '@/lib/relative-time';
 import type { LeadSnapshot, LeadStatus } from '@/lib/realtime-types';
 
@@ -115,6 +115,9 @@ function LeadCard({ lead }: { lead: LeadSnapshot }) {
   const slots = renderSlotsSummary(lead.qualificationData);
   const lastActivity = lead.updatedAt ?? lead.createdAt;
   const contactName = getContactName(lead.qualificationData);
+  const pendingDraft = usePendingDraftByConversation(
+    lead.primaryConversationId ?? '',
+  );
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -125,6 +128,14 @@ function LeadCard({ lead }: { lead: LeadSnapshot }) {
               {contactName}
             </h3>
             <StatusBadge status={lead.status} />
+            {pendingDraft && (
+              <span
+                className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700"
+                title="Agente preparou resposta aguardando aprovação"
+              >
+                Rascunho pendente
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-gray-600">
             {sourceLabel} · criado {relativeTime(lead.createdAt)}
