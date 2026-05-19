@@ -1,10 +1,11 @@
 // =============================================================================
 // Teste de act — efeitos colaterais do Especialista Operacional.
 //
-// Cobre os 3 caminhos de `action`:
-//   - respond: cria draft + envia outbound + marca auto_approved + eventos
-//   - request_clarification: similar
-//   - escalate_human: marca conversation + manda T05/T_NO_DATA + eventos
+// Cobre os 3 caminhos de `action` cruzados com os 2 tiers suportados:
+//   - respond + sugestivo (default Fase 1)  → draft pending, NÃO envia
+//   - respond + semi_autonomo                → envia direto + auto_approved
+//   - request_clarification (default tier sugestivo) → draft pending
+//   - escalate_human → manda T05/T_NO_DATA DIRETO (sem draft, ADR-017)
 // =============================================================================
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -150,7 +151,7 @@ describe('especialista_operacional/act', () => {
     publishEventMock?.mockReset();
   });
 
-  it('respond: cria draft, envia outbound, marca auto_approved, publica specialist.responded', async () => {
+  it('respond + tier sugestivo: draft pending, NÃO envia outbound, publica draft.created + specialist.responded', async () => {
     const out = await act(asClient(fake), {
       context: buildContext(fake),
       response: baseResponse({ action: 'respond' }),
@@ -166,32 +167,76 @@ describe('especialista_operacional/act', () => {
     });
 
     expect(out.action).toBe('respond');
-    expect(out.outboundMessageId).not.toBeNull();
+    expect(out.queuedForApproval).toBe(true);
+    expect(out.tierApplied).toBe('sugestivo');
+    expect(out.outboundMessageId).toBeNull();
     expect(out.draftId).not.toBeNull();
 
-    // Draft criado e marcado como auto_approved
+    // Draft criado em status pending com expires_at
     const drafts = fake.tables.message_drafts ?? [];
     expect(drafts).toHaveLength(1);
     const draft = drafts[0];
-    expect(draft?.status).toBe('auto_approved');
-    expect(draft?.final_message_id).toBe(out.outboundMessageId);
+    expect(draft?.status).toBe('pending');
+    expect(draft?.final_message_id).toBeNull();
+    expect(draft?.expires_at).not.toBeNull();
 
-    // Outbound message criada
+    // NÃO mandou mensagem outbound
     const outbound = fake.tables.messages.find((m) => m.direction === 'outbound');
-    expect(outbound?.sender_type).toBe('agent');
-    expect((outbound?.content as string)).toContain('DAS');
+    expect(outbound).toBeUndefined();
 
-    // Eventos publicados
+    // Eventos publicados — draft.created + specialist.responded
     const types = publishEventMock.mock.calls.map((c) => c[0]);
+    expect(types).toContain('draft.created');
     expect(types).toContain('specialist.responded');
     expect(types).not.toContain('agent.escalated_human');
 
-    // Audit_log preenchido
+    // Audit_log preenchido com tier_applied + queued_for_approval
     const audits = fake.tables.audit_log.filter(
       (l) => l.action === 'especialista_operacional.responded',
     );
     expect(audits).toHaveLength(1);
-    expect(audits[0]?.actor).toBe(`agent:${AGENT}`);
+    const meta = audits[0]?.metadata as Record<string, unknown>;
+    expect(meta.tier_applied).toBe('sugestivo');
+    expect(meta.queued_for_approval).toBe(true);
+  });
+
+  it('respond + tier semi_autonomo: envia direto, draft auto_approved, sem draft.created', async () => {
+    // Configura agente como semi_autonomo.
+    if (fake.tables.agents?.[0]) {
+      fake.tables.agents[0].autonomy_tier = 'semi_autonomo';
+    }
+    const out = await act(asClient(fake), {
+      context: buildContext(fake),
+      response: baseResponse({ action: 'respond' }),
+      preDecided: false,
+      intent: 'operacional.status_obrigacao',
+      runId: RUN,
+      traceId: 'trace-1b',
+      llmMetrics: {
+        promptVersion: 'atendimento.especialista_operacional.respond@1.0.0',
+        model: 'claude-sonnet-4-6',
+        costUsd: 0.012,
+      },
+    });
+
+    expect(out.action).toBe('respond');
+    expect(out.queuedForApproval).toBe(false);
+    expect(out.tierApplied).toBe('semi_autonomo');
+    expect(out.outboundMessageId).not.toBeNull();
+    expect(out.draftId).not.toBeNull();
+
+    const drafts = fake.tables.message_drafts ?? [];
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]?.status).toBe('auto_approved');
+    expect(drafts[0]?.final_message_id).toBe(out.outboundMessageId);
+
+    const outbound = fake.tables.messages.find((m) => m.direction === 'outbound');
+    expect(outbound?.sender_type).toBe('agent');
+    expect((outbound?.content as string)).toContain('DAS');
+
+    const types = publishEventMock.mock.calls.map((c) => c[0]);
+    expect(types).not.toContain('draft.created');
+    expect(types).toContain('specialist.responded');
   });
 
   it('escalate_human (default): manda T05, patch conversation, publica eventos', async () => {
@@ -215,6 +260,11 @@ describe('especialista_operacional/act', () => {
     expect(out.escalationPublished).toBe(true);
     expect(out.noDataPath).toBe(false);
 
+    // Sprint 1.5 (ADR-017): T05 vai DIRETO, sem draft.
+    expect(out.draftId).toBeNull();
+    const drafts = fake.tables.message_drafts ?? [];
+    expect(drafts).toHaveLength(0);
+
     // Conversation marcada
     const conv = fake.tables.conversations.find((c) => c.id === CONV);
     expect(conv?.metadata).toMatchObject({
@@ -222,7 +272,7 @@ describe('especialista_operacional/act', () => {
       escalated_by_agent_key: 'atendimento.especialista_operacional',
     });
 
-    // T05 mandado
+    // T05 mandado direto
     const outbound = fake.tables.messages.find((m) => m.direction === 'outbound');
     expect((outbound?.content as string).toLowerCase()).toContain('alguém da equipe');
 
@@ -230,6 +280,7 @@ describe('especialista_operacional/act', () => {
     const types = publishEventMock.mock.calls.map((c) => c[0]);
     expect(types).toContain('agent.escalated_human');
     expect(types).toContain('specialist.responded');
+    expect(types).not.toContain('draft.created');
 
     // Audit
     const audits = fake.tables.audit_log.filter(
@@ -261,7 +312,7 @@ describe('especialista_operacional/act', () => {
     expect((outbound?.content as string).toLowerCase()).toContain('não consegui encontrar');
   });
 
-  it('request_clarification: envia content como mensagem, publica respondido', async () => {
+  it('request_clarification + tier sugestivo: draft pending, NÃO envia', async () => {
     const out = await act(asClient(fake), {
       context: buildContext(fake),
       response: baseResponse({
@@ -281,14 +332,21 @@ describe('especialista_operacional/act', () => {
     });
 
     expect(out.action).toBe('request_clarification');
-    expect(out.outboundMessageId).not.toBeNull();
+    expect(out.queuedForApproval).toBe(true);
+    expect(out.tierApplied).toBe('sugestivo');
+    expect(out.outboundMessageId).toBeNull();
+    expect(out.draftId).not.toBeNull();
+
+    const drafts = fake.tables.message_drafts ?? [];
+    expect(drafts[0]?.status).toBe('pending');
+    expect((drafts[0]?.proposed_content as string)).toContain('De qual mês');
 
     const outbound = fake.tables.messages.find((m) => m.direction === 'outbound');
-    expect((outbound?.content as string)).toContain('De qual mês');
+    expect(outbound).toBeUndefined();
 
     const types = publishEventMock.mock.calls.map((c) => c[0]);
+    expect(types).toContain('draft.created');
     expect(types).toContain('specialist.responded');
-    expect(types).not.toContain('agent.escalated_human');
   });
 
   it('preDecided=true (curto-circuito sem LLM) é registrado no audit', async () => {

@@ -40,6 +40,7 @@ import {
   markLeadDropped,
   markLeadQualified,
   markLeadScheduledPending,
+  materializeProposal,
   patchConversationMetadata,
   renderSlotQuestion,
   renderTemplate,
@@ -49,6 +50,7 @@ import {
   type LeadRow,
   type LeadSlots,
   type LeadSource,
+  type MaterializeProposalResult,
   type ServiceRoleClient,
 } from '@office/shared-domain';
 import {
@@ -91,8 +93,16 @@ export type ActOutput = {
     | 'escalate_human'
     | 'silent_handoff'
     | 'mark_qualified_overridden';
-  /** Id da mensagem outbound enviada (null quando silent ou falha). */
+  /** Id da mensagem outbound enviada (null quando silent ou falha ou
+   *  queuedForApproval). */
   outboundMessageId: string | null;
+  /** Id do draft criado (sempre setado em proposta normal; null em
+   *  escalate/silent). */
+  draftId: string | null;
+  /** True quando draft ficou pending (tier sugestivo); cliente NÃO recebeu. */
+  queuedForApproval: boolean;
+  /** Tier efetivamente aplicado na proposta. null em escalate/silent/schedule. */
+  tierApplied: 'sugestivo' | 'semi_autonomo' | null;
   /** Eventos publicados. */
   publishedEvents: ReadonlyArray<string>;
 };
@@ -132,6 +142,11 @@ const resolveResponsavelName = (
   return context.displaySettings.signature;
 };
 
+/**
+ * Envio direto via canal. Usado em caminhos de escalação (T05) e schedule
+ * response (T10b) — feedback rápido pro cliente importa, não esperamos
+ * aprovação humana nesses casos.
+ */
 const sendRenderedTemplate = async (
   supabase: ServiceRoleClient,
   context: EspecialistaComercialContext,
@@ -165,6 +180,96 @@ const sendRenderedTemplate = async (
   });
   if (!result.ok) return { ok: false, reason: result.reason };
   return { ok: true, messageId: result.messageId, templateId };
+};
+
+/**
+ * Materializa proposta (T08/T08b/T09/T10) via materializeProposal — respeita
+ * tier do agente (sugestivo = draft pending; semi_autonomo = envio direto).
+ *
+ * Wraps `renderTemplate` + `materializeProposal`, retorna shape unificado.
+ */
+type MaterializeTemplateInput = {
+  templateId: string;
+  variables: Record<string, unknown>;
+  runId: string;
+  reasoning: string;
+  confidence: number | null;
+};
+
+type MaterializeTemplateResult =
+  | {
+      kind: 'queued_for_approval';
+      draftId: string;
+      templateId: string;
+      tierApplied: 'sugestivo';
+      fellBackToSugestivo: boolean;
+    }
+  | {
+      kind: 'sent_direct';
+      draftId: string;
+      messageId: string;
+      templateId: string;
+      tierApplied: 'semi_autonomo';
+    }
+  | { kind: 'render_failed'; reason: string }
+  | { kind: 'send_failed'; draftId: string | null; reason: string };
+
+const materializeRenderedTemplate = async (
+  supabase: ServiceRoleClient,
+  context: EspecialistaComercialContext,
+  input: MaterializeTemplateInput,
+  traceId: string,
+): Promise<MaterializeTemplateResult> => {
+  const tpl = getTemplateById(input.templateId);
+  if (!tpl) {
+    return { kind: 'render_failed', reason: `template ${input.templateId} desconhecido` };
+  }
+  const rendered = renderTemplate(input.templateId, input.variables);
+  if (!rendered.ok) {
+    const reason =
+      rendered.reason === 'missing_variables'
+        ? `template ${input.templateId} faltando: ${(rendered.missing ?? []).join(',')}`
+        : `template ${input.templateId} desconhecido`;
+    return { kind: 'render_failed', reason };
+  }
+
+  const result: MaterializeProposalResult = await materializeProposal(supabase, {
+    tenantId: context.conversation.tenant_id,
+    conversationId: context.conversation.id,
+    accountId: context.conversation.account_id,
+    agentId: context.agent.id,
+    agentRunId: input.runId,
+    sourceMessageId: context.message.id,
+    autonomyTier: context.agent.autonomy_tier,
+    proposedContent: rendered.content,
+    reasoning: input.reasoning,
+    confidence: input.confidence,
+    templateUsed: input.templateId,
+    subject: context.conversation.subject !== null
+      ? `Re: ${context.conversation.subject}`
+      : null,
+    traceId,
+  });
+
+  if (result.kind === 'send_failed') {
+    return { kind: 'send_failed', draftId: result.draftId, reason: result.reason };
+  }
+  if (result.kind === 'queued_for_approval') {
+    return {
+      kind: 'queued_for_approval',
+      draftId: result.draftId,
+      templateId: input.templateId,
+      tierApplied: 'sugestivo',
+      fellBackToSugestivo: result.fellBackToSugestivo,
+    };
+  }
+  return {
+    kind: 'sent_direct',
+    draftId: result.draftId,
+    messageId: result.messageId,
+    templateId: input.templateId,
+    tierApplied: 'semi_autonomo',
+  };
 };
 
 const publishLeadStatusChanged = async (
@@ -279,12 +384,24 @@ const ensureLead = async (
 // merge que dispara qualified.
 // -----------------------------------------------------------------------------
 
+type MaterializeQualifiedResult = {
+  /** null em sugestivo (mensagem ainda não saiu) ou em falha. */
+  messageId: string | null;
+  /** null em escalation paths; sempre setado em materializeQualified. */
+  draftId: string | null;
+  /** True quando ficou pending (tier sugestivo). */
+  queuedForApproval: boolean;
+  tierApplied: 'sugestivo' | 'semi_autonomo' | null;
+  events: string[];
+};
+
 const materializeQualified = async (
   supabase: ServiceRoleClient,
   context: EspecialistaComercialContext,
   lead: LeadRow,
   traceId: string,
-): Promise<{ messageId: string | null; events: string[] }> => {
+  runId: string,
+): Promise<MaterializeQualifiedResult> => {
   const previousStatus = lead.status;
   const marked = await markLeadQualified(supabase, lead.id);
 
@@ -294,13 +411,18 @@ const materializeQualified = async (
   );
   const responsavelName = resolveResponsavelName(context);
 
-  const rendered = await sendRenderedTemplate(
+  const result = await materializeRenderedTemplate(
     supabase,
     context,
-    'T10',
     {
-      lead_first_name: leadFirstName,
-      responsavel_name: responsavelName,
+      templateId: 'T10',
+      variables: {
+        lead_first_name: leadFirstName,
+        responsavel_name: responsavelName,
+      },
+      runId,
+      reasoning: 'lead qualificado — T10 (fechamento)',
+      confidence: null,
     },
     traceId,
   );
@@ -324,8 +446,30 @@ const materializeQualified = async (
     events.push('lead.qualified');
   }
 
+  if (result.kind === 'queued_for_approval') {
+    return {
+      messageId: null,
+      draftId: result.draftId,
+      queuedForApproval: true,
+      tierApplied: 'sugestivo',
+      events,
+    };
+  }
+  if (result.kind === 'sent_direct') {
+    return {
+      messageId: result.messageId,
+      draftId: result.draftId,
+      queuedForApproval: false,
+      tierApplied: 'semi_autonomo',
+      events,
+    };
+  }
+  // render_failed ou send_failed — degenerado. Sem messageId nem draft útil.
   return {
-    messageId: rendered.ok ? rendered.messageId : null,
+    messageId: null,
+    draftId: result.kind === 'send_failed' ? result.draftId : null,
+    queuedForApproval: false,
+    tierApplied: null,
     events,
   };
 };
@@ -344,6 +488,9 @@ export const act = async (
   let leadId: string | null = context.lead?.id ?? null;
   let leadStatus: string | null = context.lead?.status ?? null;
   let outboundMessageId: string | null = null;
+  let draftId: string | null = null;
+  let queuedForApproval = false;
+  let tierApplied: 'sugestivo' | 'semi_autonomo' | null = null;
   const publishedEvents: string[] = [];
   let executedAction: ActOutput['executedAction'] = 'silent_handoff';
   const auditMetadata: Record<string, unknown> = {
@@ -354,6 +501,17 @@ export const act = async (
   if (composed.escalationReason) {
     auditMetadata.escalation_reason = composed.escalationReason;
   }
+
+  const buildOutput = (action: ActOutput['executedAction']): ActOutput => ({
+    leadId,
+    leadStatus,
+    executedAction: action,
+    outboundMessageId,
+    draftId,
+    queuedForApproval,
+    tierApplied,
+    publishedEvents,
+  });
 
   // ---------------------------------------------------------------------------
   // BRANCH: silent_handoff
@@ -402,13 +560,7 @@ export const act = async (
           lead_id: leadId,
         },
       });
-      return {
-        leadId,
-        leadStatus,
-        executedAction,
-        outboundMessageId,
-        publishedEvents,
-      };
+      return buildOutput(executedAction);
     }
 
     if (composed.intendedAction === 'mark_qualified') {
@@ -436,13 +588,7 @@ export const act = async (
             error: 'schedule_response branch sem lead',
           },
         });
-        return {
-          leadId,
-          leadStatus,
-          executedAction,
-          outboundMessageId,
-          publishedEvents,
-        };
+        return buildOutput(executedAction);
       }
 
       const parsed = parseScheduleSuggestion(context.message.content);
@@ -492,13 +638,7 @@ export const act = async (
           lead_id: leadId,
         },
       });
-      return {
-        leadId,
-        leadStatus,
-        executedAction,
-        outboundMessageId,
-        publishedEvents,
-      };
+      return buildOutput(executedAction);
     }
   }
 
@@ -608,13 +748,7 @@ export const act = async (
       composed,
       auditMetadata: { ...auditMetadata, branch: 'escalate_human', lead_id: leadId },
     });
-    return {
-      leadId,
-      leadStatus,
-      executedAction,
-      outboundMessageId,
-      publishedEvents,
-    };
+    return buildOutput(executedAction);
   }
 
   // MARK_QUALIFIED — com verificação de integridade
@@ -645,29 +779,41 @@ export const act = async (
           composed,
           auditMetadata: { ...auditMetadata, branch: 'mark_qualified_inconsistente', lead_id: leadId },
         });
-        return {
-          leadId,
-          leadStatus,
-          executedAction,
-          outboundMessageId,
-          publishedEvents,
-        };
+        return buildOutput(executedAction);
       }
 
       executedAction = 'mark_qualified_overridden';
       const canonicalQuestion = renderSlotQuestion(nextSlot);
-      const rendered = await sendRenderedTemplate(
+      const result = await materializeRenderedTemplate(
         supabase,
         context,
-        'T09',
-        { content: canonicalQuestion },
+        {
+          templateId: 'T09',
+          variables: { content: canonicalQuestion },
+          runId,
+          reasoning: composed.reasoning,
+          confidence: composed.confidence,
+        },
         traceId,
       );
-      outboundMessageId = rendered.ok ? rendered.messageId : null;
+      if (result.kind === 'queued_for_approval') {
+        draftId = result.draftId;
+        queuedForApproval = true;
+        tierApplied = 'sugestivo';
+      } else if (result.kind === 'sent_direct') {
+        draftId = result.draftId;
+        outboundMessageId = result.messageId;
+        tierApplied = 'semi_autonomo';
+      } else {
+        draftId = result.kind === 'send_failed' ? result.draftId : null;
+      }
       auditMetadata.mark_qualified_overridden = true;
       auditMetadata.llm_rejected_content = composed.llmContent;
       auditMetadata.override_next_slot = nextSlot;
       auditMetadata.template = 'T09';
+      auditMetadata.queued_for_approval = queuedForApproval;
+      if (tierApplied !== null) auditMetadata.tier_applied = tierApplied;
+      auditMetadata.configured_autonomy_tier = context.agent.autonomy_tier;
 
       await writeAuditTurn({
         supabase,
@@ -682,13 +828,7 @@ export const act = async (
           lead_id: leadId,
         },
       });
-      return {
-        leadId,
-        leadStatus,
-        executedAction,
-        outboundMessageId,
-        publishedEvents,
-      };
+      return buildOutput(executedAction);
     }
 
     // Caminho feliz: fully qualified.
@@ -698,14 +838,21 @@ export const act = async (
       context,
       updatedLead,
       traceId,
+      runId,
     );
     outboundMessageId = result.messageId;
+    draftId = result.draftId;
+    queuedForApproval = result.queuedForApproval;
+    tierApplied = result.tierApplied;
     for (const e of result.events) {
       if (!publishedEvents.includes(e)) publishedEvents.push(e);
     }
     leadStatus = 'qualified';
     auditMetadata.template = 'T10';
     auditMetadata.llm_rejected_content = composed.llmContent;
+    auditMetadata.queued_for_approval = queuedForApproval;
+    if (tierApplied !== null) auditMetadata.tier_applied = tierApplied;
+    auditMetadata.configured_autonomy_tier = context.agent.autonomy_tier;
     await writeAuditTurn({
       supabase,
       context,
@@ -715,13 +862,7 @@ export const act = async (
       composed,
       auditMetadata: { ...auditMetadata, branch: 'mark_qualified', lead_id: leadId },
     });
-    return {
-      leadId,
-      leadStatus,
-      executedAction,
-      outboundMessageId,
-      publishedEvents,
-    };
+    return buildOutput(executedAction);
   }
 
   // ASK_NEXT_SLOT / ACKNOWLEDGE_THEN_ASK
@@ -738,8 +879,12 @@ export const act = async (
         context,
         updatedLead,
         traceId,
+        runId,
       );
       outboundMessageId = result.messageId;
+      draftId = result.draftId;
+      queuedForApproval = result.queuedForApproval;
+      tierApplied = result.tierApplied;
       for (const e of result.events) {
         if (!publishedEvents.includes(e)) publishedEvents.push(e);
       }
@@ -747,6 +892,9 @@ export const act = async (
       auditMetadata.template = 'T10';
       auditMetadata.auto_promoted_to_qualified = true;
       auditMetadata.llm_rejected_content = composed.llmContent;
+      auditMetadata.queued_for_approval = queuedForApproval;
+      if (tierApplied !== null) auditMetadata.tier_applied = tierApplied;
+      auditMetadata.configured_autonomy_tier = context.agent.autonomy_tier;
       await writeAuditTurn({
         supabase,
         context,
@@ -756,13 +904,7 @@ export const act = async (
         composed,
         auditMetadata: { ...auditMetadata, branch: 'auto_qualified', lead_id: leadId },
       });
-      return {
-        leadId,
-        leadStatus,
-        executedAction,
-        outboundMessageId,
-        publishedEvents,
-      };
+      return buildOutput(executedAction);
     }
 
     executedAction = composed.intendedAction;
@@ -770,15 +912,34 @@ export const act = async (
       composed.llmContent && composed.llmContent.trim().length > 0
         ? composed.llmContent
         : '...';
-    const rendered = await sendRenderedTemplate(
+    const result = await materializeRenderedTemplate(
       supabase,
       context,
-      'T09',
-      { content },
+      {
+        templateId: 'T09',
+        variables: { content },
+        runId,
+        reasoning: composed.reasoning,
+        confidence: composed.confidence,
+      },
       traceId,
     );
-    outboundMessageId = rendered.ok ? rendered.messageId : null;
+    if (result.kind === 'queued_for_approval') {
+      draftId = result.draftId;
+      queuedForApproval = true;
+      tierApplied = 'sugestivo';
+    } else if (result.kind === 'sent_direct') {
+      draftId = result.draftId;
+      outboundMessageId = result.messageId;
+      tierApplied = 'semi_autonomo';
+    } else {
+      // render_failed ou send_failed — log, audit, mas sem mensagem.
+      draftId = result.kind === 'send_failed' ? result.draftId : null;
+    }
     auditMetadata.template = 'T09';
+    auditMetadata.queued_for_approval = queuedForApproval;
+    if (tierApplied !== null) auditMetadata.tier_applied = tierApplied;
+    auditMetadata.configured_autonomy_tier = context.agent.autonomy_tier;
     await writeAuditTurn({
       supabase,
       context,
@@ -788,13 +949,7 @@ export const act = async (
       composed,
       auditMetadata: { ...auditMetadata, branch: 'slot_question', lead_id: leadId },
     });
-    return {
-      leadId,
-      leadStatus,
-      executedAction,
-      outboundMessageId,
-      publishedEvents,
-    };
+    return buildOutput(executedAction);
   }
 
   // Defensivo: ação desconhecida. Escala humano.
@@ -820,13 +975,7 @@ export const act = async (
       lead_id: leadId,
     },
   });
-  return {
-    leadId,
-    leadStatus,
-    executedAction,
-    outboundMessageId,
-    publishedEvents,
-  };
+  return buildOutput(executedAction);
 };
 
 // -----------------------------------------------------------------------------

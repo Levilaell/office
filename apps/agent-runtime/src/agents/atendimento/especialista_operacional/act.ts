@@ -3,32 +3,32 @@
 //
 // Vive fora do graph LangGraph (igual padrão do Coordenador). Responsabilidade:
 //
-//   1. Criar `message_drafts` row com proposed_content + reasoning + confidence
-//   2. Em respond / request_clarification:
-//      - Envia mensagem outbound via sendAgentMessage
-//      - Marca draft como `auto_approved` com vínculo à mensagem
-//   3. Em escalate_human:
+//   1. Em respond / request_clarification:
+//      - Delega pra materializeProposal: decide draft pending (sugestivo)
+//        vs envio direto + auto_approved (semi_autonomo).
+//      - Se send falhar em semi_autonomo, escala humano.
+//   2. Em escalate_human:
 //      - patch conversation.metadata (assigned_to_human = true)
-//      - Manda T_NO_DATA / T05 (best-effort)
+//      - Manda T_NO_DATA / T05 direto (SEM draft — feedback rápido pro cliente
+//        importa mais que aprovação humana quando estamos escalando)
 //      - Publica `agent.escalated_human`
-//   4. Em TODOS os casos:
+//   3. Em TODOS os casos:
 //      - Publica `specialist.responded`
 //      - audit_log `especialista_operacional.responded`
 //
-// Decisão pragmática Sprint 1.3: tier sugestivo opera em "draft + envio direto"
-// (status `auto_approved` no draft). Sprint 1.5 introduz `pending` real, UI de
-// inbox, worker de expiração. Ver TD-021.
+// Sprint 1.5: TD-021 do self-review 1.3 fechado — tier sugestivo agora cria
+// draft pending real e NÃO envia até operador aprovar. ADR-017 implementado.
 // =============================================================================
 
 import {
   appendAuditLog,
-  createDraft,
   getTemplateById,
-  markDraftAutoApproved,
+  materializeProposal,
   patchConversationMetadata,
   renderTemplate,
   sendAgentMessage,
   type Json,
+  type MaterializeProposalResult,
   type ServiceRoleClient,
 } from '@office/shared-domain';
 import {
@@ -64,6 +64,11 @@ export type ActOutput = {
   escalationPublished: boolean;
   /** True se mandamos T_NO_DATA em escalate_human (quando motivo era sem-dados). */
   noDataPath: boolean;
+  /** True quando draft ficou pending (tier sugestivo); UI mostra inbox. */
+  queuedForApproval: boolean;
+  /** Tier efetivamente aplicado (pode divergir do configurado quando manual/
+   *  autonomo caem pra sugestivo na Fase 1). null em escalações. */
+  tierApplied: 'sugestivo' | 'semi_autonomo' | null;
 };
 
 const ESCALATION_TEMPLATE_DEFAULT = 'T05';
@@ -98,9 +103,11 @@ export const act = async (
   let outboundMessageId: string | null = null;
   let escalationPublished = false;
   let noDataPath = false;
+  let queuedForApproval = false;
+  let tierApplied: ActOutput['tierApplied'] = null;
 
   // -------------------------------------------------------------------------
-  // RESPOND / REQUEST_CLARIFICATION
+  // RESPOND / REQUEST_CLARIFICATION → materializeProposal (sugestivo vs auto)
   // -------------------------------------------------------------------------
   if (response.action === 'respond' || response.action === 'request_clarification') {
     const content = response.content ?? '';
@@ -116,56 +123,45 @@ export const act = async (
       });
     }
 
-    // 1. Cria draft (status default = pending, mas vamos sobrescrever).
-    const draft = await createDraft(supabase, {
-      tenantId: conversation.tenant_id,
-      conversationId: conversation.id,
-      agentId,
-      agentRunId: runId,
-      sourceMessageId: message.id,
-      proposedContent: content,
-      reasoning: response.reasoning,
-      confidence: response.confidence,
-    });
-    draftId = draft.id;
-
-    // 2. Envia outbound.
-    const sendResult = await sendAgentMessage(supabase, {
+    const result: MaterializeProposalResult = await materializeProposal(supabase, {
       tenantId: conversation.tenant_id,
       conversationId: conversation.id,
       accountId: conversation.account_id,
       agentId,
-      content,
+      agentRunId: runId,
+      sourceMessageId: message.id,
+      autonomyTier: context.specialistAgent.autonomy_tier,
+      proposedContent: content,
+      reasoning: response.reasoning,
+      confidence: response.confidence,
+      templateUsed: response.template_used,
+      subject: conversation.subject !== null ? `Re: ${conversation.subject}` : null,
       traceId,
-      ...(conversation.subject !== null && {
-        subject: `Re: ${conversation.subject}`,
-      }),
     });
 
-    if (sendResult.ok) {
-      outboundMessageId = sendResult.messageId;
-      // 3. Marca draft como auto_approved + vincula mensagem final.
-      await markDraftAutoApproved(supabase, draftId, sendResult.messageId, {
-        autonomy_tier: context.specialistAgent.autonomy_tier,
-        template_used: response.template_used,
-        action: response.action,
-      });
-    } else {
-      // Falha de envio → escala humano. O draft pending criado acima NÃO é
-      // limpo automaticamente — fica como histórico de "respostas tentadas
-      // mas não enviadas". Vai aparecer como pending no inbox da Sprint 1.5;
-      // operador decide se tenta reenviar manual ou rejeita. Não usamos
-      // `expired` aqui porque o motivo não é tempo decorrido — é falha
-      // técnica que merece atenção humana imediata.
-      noDataPath = false;
+    if (result.kind === 'send_failed') {
+      // Send falhou em semi_autonomo. Draft fica como pending (operador vê
+      // no inbox + pode reenviar). Vamos escalar humano com motivo claro
+      // pra cliente final ter feedback rápido (T05).
+      draftId = result.draftId;
       return await escalateFromHandler(supabase, {
         ...input,
         response: {
           ...response,
           action: 'escalate_human',
-          escalation_reason: `falha ao enviar mensagem: ${sendResult.reason}`,
+          escalation_reason: `falha ao enviar mensagem: ${result.reason}`,
         },
       });
+    }
+    draftId = result.draftId;
+    tierApplied = result.tierApplied;
+    if (result.kind === 'queued_for_approval') {
+      // Tier sugestivo — draft pending, NÃO enviou. Operador aprova/edita/
+      // rejeita via UI de inbox.
+      queuedForApproval = true;
+    } else {
+      // Tier semi_autonomo — enviou direto, draft auto_approved vinculado.
+      outboundMessageId = result.messageId;
     }
   }
 
@@ -227,6 +223,9 @@ export const act = async (
       ...(draftId !== null && { draft_id: draftId }),
       ...(escalationPublished && { escalation_published: true }),
       ...(noDataPath && { no_data_path: true }),
+      ...(queuedForApproval && { queued_for_approval: true }),
+      ...(tierApplied !== null && { tier_applied: tierApplied }),
+      configured_autonomy_tier: context.specialistAgent.autonomy_tier,
     } satisfies Json,
   });
 
@@ -236,11 +235,18 @@ export const act = async (
     action: response.action,
     escalationPublished,
     noDataPath,
+    queuedForApproval,
+    tierApplied,
   };
 };
 
 // -----------------------------------------------------------------------------
 // Sub-rotina: escalação humana.
+//
+// Sprint 1.5: T05/T_NO_DATA enviam DIRETO (sem materializar draft). Cliente
+// precisa de feedback imediato de que humano vai pegar; esperar aprovação
+// humana pra mandar "vou verificar e volto" é ruído sem ganho.
+// Audit_log preserva o conteúdo enviado (campo template_used + reason).
 // -----------------------------------------------------------------------------
 const runEscalation = async (
   supabase: ServiceRoleClient,
@@ -270,25 +276,11 @@ const runEscalation = async (
 
   const { id: templateId, noDataPath } = pickEscalationTemplate(response);
   let outboundMessageId: string | null = null;
-  let draftId: string | null = null;
 
   const template = getTemplateById(templateId);
   if (template) {
     const rendered = renderTemplate(templateId, { bot_name: botName });
     if (rendered.ok) {
-      // Cria draft do template de escalação pra rastrear também.
-      const draft = await createDraft(supabase, {
-        tenantId: conversation.tenant_id,
-        conversationId: conversation.id,
-        agentId,
-        agentRunId: input.runId,
-        sourceMessageId: message.id,
-        proposedContent: rendered.content,
-        reasoning: response.reasoning,
-        confidence: response.confidence,
-      });
-      draftId = draft.id;
-
       const sendResult = await sendAgentMessage(supabase, {
         tenantId: conversation.tenant_id,
         conversationId: conversation.id,
@@ -302,11 +294,9 @@ const runEscalation = async (
       });
       if (sendResult.ok) {
         outboundMessageId = sendResult.messageId;
-        await markDraftAutoApproved(supabase, draft.id, sendResult.messageId, {
-          escalation_template: templateId,
-        });
       }
-      // Falha de envio NÃO derruba a escalação — humano ainda vê na UI.
+      // Falha de envio NÃO derruba a escalação — humano ainda vê na UI via
+      // conversation.metadata.assigned_to_human.
     }
   }
 
@@ -326,7 +316,12 @@ const runEscalation = async (
     traceId,
   );
 
-  return { draftId, outboundMessageId, escalationPublished: true, noDataPath };
+  return {
+    draftId: null,
+    outboundMessageId,
+    escalationPublished: true,
+    noDataPath,
+  };
 };
 
 // Quando act precisa degradar (envio falhou etc) e chamar escalate sem re-entrar

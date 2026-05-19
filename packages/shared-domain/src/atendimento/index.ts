@@ -27,6 +27,13 @@ export {
 } from './display-settings';
 
 export {
+  materializeProposal,
+  type AutonomyTier,
+  type MaterializeProposalInput,
+  type MaterializeProposalResult,
+} from './materialize-proposal';
+
+export {
   createDraft,
   getDraftById,
   listPendingDrafts,
