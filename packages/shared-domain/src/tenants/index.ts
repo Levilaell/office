@@ -38,23 +38,61 @@ export type CreateTenantInput = {
   name: string;
 };
 
+export type CreateTenantResult = {
+  tenant: Tenant;
+  /** true se INSERT criou row; false se já existia (upsert no-op). Usado
+   *  pelo onboarding pra marcar `display_settings.onboarding_completed`
+   *  apenas em tenants novos — legados (undefined) continuam vendo o
+   *  dashboard direto. */
+  created: boolean;
+};
+
 export const createTenant = async (
   supabase: ServiceRoleClient,
   input: CreateTenantInput,
-): Promise<Tenant> => {
-  // Idempotente: se outro caller (webhook ou onboarding sync) já criou,
-  // só atualiza o nome e retorna a linha existente.
+): Promise<CreateTenantResult> => {
+  // Lookup-then-insert ao invés de upsert, porque queremos saber se foi
+  // criação nova (decide se marcamos onboarding_completed=false). Race
+  // entre dois callers raramente acontece — onboarding síncrono + webhook
+  // Clerk são serializados pelo Clerk Org criação.
+  const existing = await supabase
+    .from('tenants')
+    .select('*')
+    .eq('clerk_org_id', input.clerkOrgId)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data) {
+    // Tenant existia. Atualiza apenas o nome (caso Clerk org tenha sido
+    // renomeada) sem tocar display_settings.
+    const { data, error } = await supabase
+      .from('tenants')
+      .update({ name: input.name })
+      .eq('clerk_org_id', input.clerkOrgId)
+      .select()
+      .single();
+    if (error) throw error;
+    return { tenant: data, created: false };
+  }
+
   const { data, error } = await supabase
     .from('tenants')
-    .upsert(
-      { clerk_org_id: input.clerkOrgId, name: input.name },
-      { onConflict: 'clerk_org_id' },
-    )
+    .insert({ clerk_org_id: input.clerkOrgId, name: input.name })
     .select()
     .single();
-
-  if (error) throw error;
-  return data;
+  if (error) {
+    // Race com outro caller — outra session criou enquanto fazíamos lookup.
+    if (error.code === '23505') {
+      const retry = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('clerk_org_id', input.clerkOrgId)
+        .single();
+      if (retry.error) throw retry.error;
+      return { tenant: retry.data, created: false };
+    }
+    throw error;
+  }
+  return { tenant: data, created: true };
 };
 
 export type UpdateTenantInput = {
@@ -113,6 +151,78 @@ export const unlinkUserFromTenant = async (
 
 export type TenantRole =
   Database['public']['Tables']['tenant_users']['Row']['role'];
+
+/**
+ * Sprint 1.6 — marca `display_settings.onboarding_completed=false` em um
+ * tenant. Chamado UMA vez no `createTenant` real (não em upsert).
+ *
+ * Estratégia explícita: false ≠ undefined. Tenants legados pré-feature
+ * ficam undefined; verificação `=== false` no layout do dashboard só
+ * redireciona tenants novos. Backfill SQL não é necessário.
+ */
+export const markTenantOnboardingPending = async (
+  supabase: ServiceRoleClient,
+  tenantId: string,
+): Promise<void> => {
+  const current = await supabase
+    .from('tenants')
+    .select('display_settings')
+    .eq('id', tenantId)
+    .single();
+  if (current.error) throw current.error;
+  const merged = {
+    ...((current.data.display_settings as Record<string, unknown> | null) ?? {}),
+    onboarding_completed: false,
+  };
+  const { error } = await supabase
+    .from('tenants')
+    .update({ display_settings: merged })
+    .eq('id', tenantId);
+  if (error) throw error;
+};
+
+/**
+ * Sprint 1.6 — patch incremental em `display_settings` aplicado pelo wizard
+ * de onboarding. Aceita campos parciais e mergea com o existente. Marca
+ * `onboarding_completed=true` sempre — fim do fluxo.
+ */
+export const completeTenantOnboarding = async (
+  supabase: AnyClient,
+  tenantId: string,
+  patch: Record<string, unknown>,
+): Promise<Tenant> => {
+  const current = await supabase
+    .from('tenants')
+    .select('display_settings')
+    .eq('id', tenantId)
+    .single();
+  if (current.error) throw current.error;
+  const merged = {
+    ...((current.data.display_settings as Record<string, unknown> | null) ?? {}),
+    ...patch,
+    onboarding_completed: true,
+  };
+  const { data, error } = await supabase
+    .from('tenants')
+    .update({ display_settings: merged })
+    .eq('id', tenantId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Helper puro para verificar se um tenant precisa passar pelo wizard.
+ * `=== false` estrito — undefined/true/missing key passam direto.
+ */
+export const tenantNeedsOnboarding = (
+  displaySettings: unknown,
+): boolean => {
+  if (!displaySettings || typeof displaySettings !== 'object') return false;
+  const v = (displaySettings as Record<string, unknown>).onboarding_completed;
+  return v === false;
+};
 
 /**
  * Lê o role do user no tenant ativo. RLS na tabela `tenant_users` filtra por

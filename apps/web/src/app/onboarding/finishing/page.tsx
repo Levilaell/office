@@ -23,6 +23,8 @@ export default function FinishingPage() {
           if (!cancelled) setErrorMsg(body.error ?? 'falha ao finalizar onboarding');
           return;
         }
+        // Dashboard layout aplica o redirect pro wizard se o tenant foi
+        // marcado como pendente em `complete-org`. Aqui só encaminhamos.
         if (!cancelled) router.replace('/dashboard');
       } catch (err) {
         if (!cancelled) {

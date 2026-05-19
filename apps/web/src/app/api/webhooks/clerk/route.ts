@@ -6,6 +6,7 @@ import {
   getTenantByClerkOrgId,
   getUserByClerkUserId,
   linkUserToTenant,
+  markTenantOnboardingPending,
   seedDefaultAgentsForTenant,
   unlinkUserFromTenant,
   updateTenantByClerkOrgId,
@@ -103,11 +104,17 @@ export async function POST(req: NextRequest) {
       case 'organization.created':
       case 'organization.updated': {
         const data = (evt as ClerkOrgEvent).data;
-        const tenant = await createTenant(supabase, {
+        const { tenant, created } = await createTenant(supabase, {
           clerkOrgId: data.id,
           name: data.name ?? 'Escritório',
         });
         await seedDefaultAgentsForTenant(supabase, tenant.id);
+        // Sprint 1.6 — marca onboarding pendente apenas em tenants novos
+        // (não em update). Tenants legados pré-feature ficam com
+        // display_settings.onboarding_completed=undefined e passam direto.
+        if (created) {
+          await markTenantOnboardingPending(supabase, tenant.id);
+        }
         break;
       }
       case 'organization.deleted': {

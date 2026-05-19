@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
+import { getCurrentTenant, tenantNeedsOnboarding } from '@office/shared-domain';
 import { RealtimeProvider } from '@/components/realtime-provider';
 import { getSupabaseForCurrentUser } from '@/lib/supabase';
 import {
@@ -27,6 +28,14 @@ export default async function DashboardLayout({
   // Pre-busca o snapshot inicial server-side. RLS filtra por tenant via JWT
   // do Clerk. Fica garantido que o cliente só recebe dados do tenant ativo.
   const supabase = await getSupabaseForCurrentUser();
+
+  // Sprint 1.6 — redirect pro wizard SE tenant novo (display_settings.
+  // onboarding_completed === false). Tenants legados (undefined) e
+  // tenants já configurados (true) passam direto. Wizard pode ser pulado.
+  const tenant = await getCurrentTenant(supabase);
+  if (tenant && tenantNeedsOnboarding(tenant.display_settings)) {
+    redirect('/onboarding/atendimento');
+  }
   const [
     agentsRes,
     tasksRes,

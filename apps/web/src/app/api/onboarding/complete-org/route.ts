@@ -6,6 +6,7 @@ import {
   getTenantByClerkOrgId,
   getUserByClerkUserId,
   linkUserToTenant,
+  markTenantOnboardingPending,
   seedDefaultAgentsForTenant,
 } from '@office/shared-domain';
 import { getServiceRoleSupabase } from '@/lib/supabase';
@@ -25,10 +26,16 @@ export async function POST() {
   if (!tenant) {
     const client = await clerkClient();
     const org = await client.organizations.getOrganization({ organizationId: orgId });
-    tenant = await createTenant(supabase, {
+    const result = await createTenant(supabase, {
       clerkOrgId: orgId,
       name: org.name,
     });
+    tenant = result.tenant;
+    if (result.created) {
+      // Sprint 1.6 — marca tenant novo como pendente de onboarding. Tenants
+      // legados sem essa flag (undefined) NÃO veem o wizard.
+      await markTenantOnboardingPending(supabase, tenant.id);
+    }
   }
   await seedDefaultAgentsForTenant(supabase, tenant.id);
 
