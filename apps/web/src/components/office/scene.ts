@@ -8,6 +8,7 @@ import {
 } from 'pixi.js';
 import type { RenderAgent } from './agent-render';
 import { AGENT_STATE_VISUALS } from './visuals';
+import { playHandoffAnimation } from './handoff-animation';
 import { TILE_HEIGHT, TILE_WIDTH, type WorldCoord, worldToScreen } from './iso';
 import { DEPARTMENT_COLORS, ROOMS } from './rooms';
 
@@ -24,6 +25,11 @@ const DIAMOND_VERTICES: readonly number[] = [
 
 export type SceneApi = {
   updateAgents: (agents: RenderAgent[]) => void;
+  /** Sprint 1.6 — dispara animação one-shot de "ponto viajando" entre dois
+   *  agentes. Resolve as posições internamente via id → container. Retorna
+   *  false se um dos agentes não está renderizado (ex: agente do
+   *  departamento que não tem sala mapeada). */
+  playHandoff: (fromAgentId: string, toAgentId: string) => boolean;
   destroy: () => void;
 };
 
@@ -93,11 +99,15 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
   agentsLayer.sortableChildren = true;
   const uiLayer = new Container();
   uiLayer.label = 'ui-layer';
+  const animationsLayer = new Container();
+  animationsLayer.label = 'animations-layer';
 
-  root.addChild(floorLayer, agentsLayer, uiLayer);
+  root.addChild(floorLayer, agentsLayer, uiLayer, animationsLayer);
 
   const tickerCallbacks: TickerCallback<unknown>[] = [];
   const avatarContainers: Container[] = [];
+  const avatarPositionById = new Map<string, { x: number; y: number }>();
+  const liveHandoffCancellers: Array<() => void> = [];
 
   for (const room of ROOMS) {
     const colors = DEPARTMENT_COLORS[room.department];
@@ -185,6 +195,7 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
       c.destroy({ children: true });
     }
     avatarContainers.length = 0;
+    avatarPositionById.clear();
   }
 
   function renderAvatars(agents: RenderAgent[]) {
@@ -295,6 +306,7 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
 
       agentsLayer.addChild(container);
       avatarContainers.push(container);
+      avatarPositionById.set(agent.id, { x: s.x, y: s.y });
     }
   }
 
@@ -304,7 +316,28 @@ export function renderScene(app: Application, opts: SceneOptions): SceneApi {
     updateAgents(agents) {
       renderAvatars(agents);
     },
+    playHandoff(fromAgentId, toAgentId) {
+      const from = avatarPositionById.get(fromAgentId);
+      const to = avatarPositionById.get(toAgentId);
+      if (!from || !to) return false;
+      const handle = playHandoffAnimation({
+        app,
+        layer: animationsLayer,
+        from,
+        to,
+        onComplete: () => {
+          const idx = liveHandoffCancellers.indexOf(handle.cancel);
+          if (idx !== -1) liveHandoffCancellers.splice(idx, 1);
+        },
+      });
+      liveHandoffCancellers.push(handle.cancel);
+      return true;
+    },
     destroy() {
+      // Cancela quaisquer animações in-flight antes de derrubar o root —
+      // se uma animação tentar tocar app.ticker após destroy do app, crash.
+      for (const cancel of liveHandoffCancellers.slice()) cancel();
+      liveHandoffCancellers.length = 0;
       app.renderer.off('resize', onResize);
       clearAvatars();
       root.destroy({ children: true });

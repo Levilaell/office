@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { useAuth } from '@clerk/nextjs';
 import { isAgentState, isChannelSessionStatus } from '@office/shared-types';
+import { useHandoffAnimationStore } from '@/lib/handoff-animation-store';
 import { useRealtimeStore } from '@/lib/realtime-store';
 import type {
   ApprovalSnapshot,
@@ -117,6 +118,7 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
   const replaceDrafts = useRealtimeStore((s) => s.replaceDrafts);
   const updateDraftStatus = useRealtimeStore((s) => s.updateDraftStatus);
   const removeDraft = useRealtimeStore((s) => s.removeDraft);
+  const enqueueHandoffAnim = useHandoffAnimationStore((s) => s.enqueue);
 
   // Hidrata o store assim que o snapshot inicial chega via prop. Idempotente.
   useEffect(() => {
@@ -226,6 +228,29 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
           p.intent,
           p.decision as 'respond_direct' | 'handoff_specialist' | 'escalate_human' | 'ignore',
         );
+      });
+
+      // Sprint 1.6 — Coordenador despachou handoff pra Especialista. Canvas
+      // anima ponto colorido viajando entre avatares. Não há mudança de
+      // dados — só efeito visual.
+      socket.on('agent.handoff_requested', (payload: unknown) => {
+        if (!payload || typeof payload !== 'object') return;
+        const p = payload as {
+          fromAgentId?: unknown;
+          toAgentKey?: unknown;
+          traceId?: unknown;
+        };
+        if (
+          typeof p.fromAgentId !== 'string' ||
+          typeof p.toAgentKey !== 'string'
+        ) {
+          return;
+        }
+        enqueueHandoffAnim({
+          fromAgentId: p.fromAgentId,
+          toAgentKey: p.toAgentKey,
+          traceId: typeof p.traceId === 'string' ? p.traceId : 'unknown',
+        });
       });
 
       // Sprint 1.2 — Coordenador escalou pra humano. Marca delta direto e
@@ -376,6 +401,7 @@ export const RealtimeProvider = ({ initialSnapshot, children }: Props) => {
     replaceDrafts,
     updateDraftStatus,
     removeDraft,
+    enqueueHandoffAnim,
   ]);
 
   return <>{children}</>;

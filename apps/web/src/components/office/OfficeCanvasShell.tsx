@@ -1,11 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  useHandoffAnimationStore,
+  usePendingHandoffs,
+} from '@/lib/handoff-animation-store';
 import { useAgents, useDraftCountsByAgent } from '@/lib/realtime-store';
 import type { AgentSnapshot } from '@/lib/realtime-types';
 import { AgentSheet } from './AgentSheet';
 import type { RenderAgent } from './agent-render';
-import { OfficeCanvas } from './OfficeCanvas';
+import {
+  OfficeCanvas,
+  type PendingHandoffDispatch,
+} from './OfficeCanvas';
 import { roomForDepartment, tilePosForAgent } from './positioning';
 import { RoomPlaceholderTooltip } from './RoomPlaceholderTooltip';
 
@@ -32,6 +39,8 @@ const toRenderAgent = (
 export function OfficeCanvasShell() {
   const agents = useAgents();
   const draftCounts = useDraftCountsByAgent();
+  const pendingHandoffs = usePendingHandoffs();
+  const consumeHandoff = useHandoffAnimationStore((s) => s.consume);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredEmptyRoom, setHoveredEmptyRoom] = useState<string | null>(null);
 
@@ -43,6 +52,36 @@ export function OfficeCanvasShell() {
     }
     return out;
   }, [agents, draftCounts]);
+
+  // Mapa agentKey → agentId pra resolver handoffs (payload do evento
+  // carrega `toAgentKey`, não UUID). Lookup memoizado pra evitar O(n)
+  // scan a cada render.
+  const agentIdByKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of agents) m.set(a.agentKey, a.id);
+    return m;
+  }, [agents]);
+
+  const dispatchableHandoffs = useMemo<PendingHandoffDispatch[]>(() => {
+    const out: PendingHandoffDispatch[] = [];
+    for (const h of pendingHandoffs) {
+      const toAgentId = agentIdByKey.get(h.toAgentKey);
+      if (!toAgentId) {
+        // Agente alvo não está hidratado ainda (raça com hydration). Pula
+        // — handoff fica na fila. Próximo render tenta de novo.
+        continue;
+      }
+      out.push({ id: h.id, fromAgentId: h.fromAgentId, toAgentId });
+    }
+    return out;
+  }, [pendingHandoffs, agentIdByKey]);
+
+  const handleDispatched = useCallback(
+    (id: string) => {
+      consumeHandoff(id);
+    },
+    [consumeHandoff],
+  );
 
   return (
     <div className="relative h-full w-full">
@@ -56,6 +95,8 @@ export function OfficeCanvasShell() {
           }
           setHoveredEmptyRoom(department);
         }}
+        pendingHandoffs={dispatchableHandoffs}
+        onHandoffDispatched={handleDispatched}
       />
       <RoomPlaceholderTooltip
         department={hoveredEmptyRoom}
