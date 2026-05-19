@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Bateria de eval do Roteador (Fase 2-prep). Cada entry é uma mensagem PT-BR coloquial que o Roteador deve classificar num dos 7 destinos. `llmResponse` é o JSON estrito que o LLM mockado retorna em replay. Cobre mínimo de 5 mensagens por destino crítico (atendimento, societario, platform) + cobertura dos outros 4 departamentos. Eval REAL com Anthropic vira sprint posterior (TD); por enquanto valida que prompt v1.1.0 + ROUTER_DECISION_SCHEMA aceitam todos os destinos.",
+  "promptVersion": "router.classify@1.1.0",
+  "entries": [
+    {
+      "id": "atendimento-01",
+      "content": "Bom dia, vocês ainda atendem por aqui? Preciso saber se posso enviar documentos hoje.",
+      "llmResponse": "{\"department\": \"atendimento\", \"confidence\": \"high\", \"reasoning\": \"primeiro contato sobre fluxo de atendimento\"}",
+      "expectedDepartment": "atendimento",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "atendimento-02",
+      "content": "Oi, preciso da segunda via do meu contrato com vocês",
+      "llmResponse": "{\"department\": \"atendimento\", \"confidence\": \"high\", \"reasoning\": \"pedido de segunda via — administrativo geral\"}",
+      "expectedDepartment": "atendimento",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "atendimento-03",
+      "content": "Bom dia. Estou avaliando trocar de contador e queria entender como vocês trabalham. Atendem MEI?",
+      "llmResponse": "{\"department\": \"atendimento\", \"confidence\": \"high\", \"reasoning\": \"primeiro contato comercial — lead em pré-qualificação\"}",
+      "expectedDepartment": "atendimento",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "atendimento-04",
+      "content": "Vocês podem confirmar se receberam meu e-mail de ontem?",
+      "llmResponse": "{\"department\": \"atendimento\", \"confidence\": \"high\", \"reasoning\": \"confirmação de recebimento — comunicação relacional\"}",
+      "expectedDepartment": "atendimento",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "atendimento-05",
+      "content": "Boa tarde. Estou tentando falar com a Camila desde ontem, ela está hoje?",
+      "llmResponse": "{\"department\": \"atendimento\", \"confidence\": \"high\", \"reasoning\": \"pergunta sobre disponibilidade de pessoa do escritório\"}",
+      "expectedDepartment": "atendimento",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "societario-01",
+      "content": "Preciso alterar o capital social da minha empresa, qual o procedimento?",
+      "llmResponse": "{\"department\": \"societario\", \"confidence\": \"high\", \"reasoning\": \"alteração contratual — Junta Comercial\"}",
+      "expectedDepartment": "societario",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "societario-02",
+      "content": "Quero abrir uma nova filial em Campinas. Vocês cuidam disso?",
+      "llmResponse": "{\"department\": \"societario\", \"confidence\": \"high\", \"reasoning\": \"abertura de filial — registro societário\"}",
+      "expectedDepartment": "societario",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "societario-03",
+      "content": "Estou vendendo minha parte na empresa pro meu sócio. Preciso de alteração de contrato social.",
+      "llmResponse": "{\"department\": \"societario\", \"confidence\": \"high\", \"reasoning\": \"alteração de quadro societário\"}",
+      "expectedDepartment": "societario",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "societario-04",
+      "content": "Vou encerrar a LTDA esse mês, o que preciso providenciar com vocês?",
+      "llmResponse": "{\"department\": \"societario\", \"confidence\": \"high\", \"reasoning\": \"encerramento de empresa\"}",
+      "expectedDepartment": "societario",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "societario-05",
+      "content": "Os arquivos da Junta Comercial chegaram com erro no objeto social. Como corrigir?",
+      "llmResponse": "{\"department\": \"societario\", \"confidence\": \"high\", \"reasoning\": \"correção em Junta Comercial — objeto social\"}",
+      "expectedDepartment": "societario",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "platform-01",
+      "content": "Não estou conseguindo entrar no painel do sistema. Aparece tela em branco.",
+      "llmResponse": "{\"department\": \"platform\", \"confidence\": \"high\", \"reasoning\": \"suporte técnico da plataforma — bug de UI\"}",
+      "expectedDepartment": "platform",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "platform-02",
+      "content": "Recebi a fatura do mês mas o valor está diferente do contratado. Pode olhar?",
+      "llmResponse": "{\"department\": \"platform\", \"confidence\": \"high\", \"reasoning\": \"billing do SaaS — cobrança da plataforma\"}",
+      "expectedDepartment": "platform",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "platform-03",
+      "content": "Como configuro o horário comercial pro agente não responder fora do expediente?",
+      "llmResponse": "{\"department\": \"platform\", \"confidence\": \"high\", \"reasoning\": \"configuração de uso da ferramenta\"}",
+      "expectedDepartment": "platform",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "platform-04",
+      "content": "Preciso convidar mais um operador pra equipe. Onde fico esse acesso?",
+      "llmResponse": "{\"department\": \"platform\", \"confidence\": \"high\", \"reasoning\": \"convite de usuário — configuração da plataforma\"}",
+      "expectedDepartment": "platform",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "platform-05",
+      "content": "O canal de WhatsApp desconectou de novo, isso aparece nos logs de vocês?",
+      "llmResponse": "{\"department\": \"platform\", \"confidence\": \"medium\", \"reasoning\": \"suporte técnico — possivelmente infra de canal\"}",
+      "expectedDepartment": "platform",
+      "expectedConfidence": "medium"
+    },
+    {
+      "id": "pessoal-01",
+      "content": "Meu funcionário pediu demissão. Quais documentos vocês precisam pra rescisão?",
+      "llmResponse": "{\"department\": \"pessoal\", \"confidence\": \"high\", \"reasoning\": \"rescisão CLT — departamento pessoal\"}",
+      "expectedDepartment": "pessoal",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "pessoal-02",
+      "content": "Quando vocês mandam o contracheque dessa quinzena?",
+      "llmResponse": "{\"department\": \"pessoal\", \"confidence\": \"high\", \"reasoning\": \"folha de pagamento\"}",
+      "expectedDepartment": "pessoal",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "contabil-01",
+      "content": "Preciso do balanço fechado do trimestre pro banco, dá pra agilizar?",
+      "llmResponse": "{\"department\": \"contabil\", \"confidence\": \"high\", \"reasoning\": \"fechamento de competência — balanço\"}",
+      "expectedDepartment": "contabil",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "fiscal-01",
+      "content": "Esqueci de pagar o DAS do mês passado, qual o procedimento?",
+      "llmResponse": "{\"department\": \"fiscal\", \"confidence\": \"high\", \"reasoning\": \"DAS atrasado — apuração fiscal\"}",
+      "expectedDepartment": "fiscal",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "fiscal-02",
+      "content": "Recebi um auto de infração de ICMS, vocês conseguem dar suporte na defesa?",
+      "llmResponse": "{\"department\": \"fiscal\", \"confidence\": \"high\", \"reasoning\": \"contencioso fiscal — ICMS\"}",
+      "expectedDepartment": "fiscal",
+      "expectedConfidence": "high"
+    },
+    {
+      "id": "financeiro_interno-01",
+      "content": "O cliente da [Empresa X] está atrasado no pagamento da mensalidade do escritório, como agimos?",
+      "llmResponse": "{\"department\": \"financeiro_interno\", \"confidence\": \"high\", \"reasoning\": \"inadimplência de cliente do próprio escritório\"}",
+      "expectedDepartment": "financeiro_interno",
+      "expectedConfidence": "high"
+    }
+  ]
+}

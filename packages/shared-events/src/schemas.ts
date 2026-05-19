@@ -20,6 +20,10 @@ export const EVENT_TYPES = [
   'approval.created',
   'approval.resolved',
   'message.received',
+  // Sprint Fase 2-prep — Roteador entra no caminho real (supersedes ADR-019).
+  // Publicado pelo Roteador após classificar mensagem inbound em departamento.
+  // Subscribers: Coordenadores filtrados por `destinationDepartment`.
+  'message.routed',
   'channel_session.status_changed',
   // Sprint 1.2 — Coordenador de Atendimento.
   // `agent.handoff_requested` é separado de `handoff.requested` porque o
@@ -153,6 +157,39 @@ export const MessageReceivedPayload = z.object({
   channel: z.enum(['email', 'whatsapp', 'simulated_webhook', 'sms']),
 });
 export type MessageReceivedPayload = z.infer<typeof MessageReceivedPayload>;
+
+// Sprint Fase 2-prep — Roteador no caminho real (supersedes ADR-019).
+//
+// Roteador classifica a mensagem inbound e publica este evento. Coordenadores
+// subscrevem filtrando por `destinationDepartment`. Mensagens classificadas
+// pra departamentos sem Coordenador implementado (todos exceto Atendimento na
+// Fase 1) ficam sem consumer — comportamento esperado e simétrico ao caso
+// pré-Sprint 1.2.
+//
+// `accountId` viaja no payload pra Coordenador não precisar de lookup por
+// `conversationId` na hora de criar a task.
+export const MessageRoutedPayload = z.object({
+  tenantId: z.string().uuid(),
+  accountId: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  destinationDepartment: z.enum([
+    'atendimento',
+    'societario',
+    'pessoal',
+    'contabil',
+    'fiscal',
+    'financeiro_interno',
+    'platform',
+  ]),
+  // 0-1. Mapeado de "high"|"medium"|"low" do Roteador atual:
+  // high=0.9, medium=0.6, low=0.3.
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string().min(1),
+  // UUID do agente Roteador (registro `agents` do tenant), não a string.
+  classifiedBy: z.string().uuid(),
+});
+export type MessageRoutedPayload = z.infer<typeof MessageRoutedPayload>;
 
 export const ChannelSessionStatusChangedPayload = z.object({
   sessionId: z.string().uuid(),

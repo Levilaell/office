@@ -1,9 +1,15 @@
 // =============================================================================
 // Worker subscriber do Coordenador de Atendimento.
 //
-// Subscreve `message.received` em todos os tenants (canal pattern
-// `tenant:*`). Pra cada mensagem, cria/atualiza uma task `coordenador_classify`
-// e enfileira em `agent-tasks` com `agentKey=atendimento.coordenador`.
+// Sprint Fase 2-prep (supersedes ADR-019): subscreve `message.routed` filtrado
+// por `destinationDepartment === 'atendimento'`. Antes desta sprint o
+// Coordenador escutava `message.received` direto — válido quando Atendimento
+// era o único departamento. Com o Roteador no caminho, mensagens classificadas
+// pra outros departamentos não entram aqui.
+//
+// Mensagens routedas pra departamentos sem Coordenador implementado (todos
+// exceto Atendimento na Fase 2-prep) ficam sem consumer — comportamento
+// esperado e simétrico ao caso anterior ao Sprint 1.2.
 //
 // Idempotência: `jobId = coord-{messageId}`. BullMQ deduplica — reentregas de
 // pubsub (socket reconnect, múltiplas instâncias de agent-runtime) não geram
@@ -23,7 +29,7 @@ import {
 } from '@office/shared-domain';
 import {
   enqueueAgentTask,
-  MessageReceivedPayload,
+  MessageRoutedPayload,
   subscribeEvents,
   type Subscription,
 } from '@office/shared-events';
@@ -32,6 +38,7 @@ const log = (msg: string): void =>
   console.log(`[workers/atendimento-coordenador] ${msg}`);
 
 const COORDINATOR_AGENT_KEY = 'atendimento.coordenador';
+const TARGET_DEPARTMENT = 'atendimento';
 
 /**
  * Inicia o subscriber. Retorna a `Subscription` que o caller fecha no
@@ -41,21 +48,24 @@ export const startCoordinatorSubscriber = (
   supabase: ServiceRoleClient,
 ): Subscription =>
   subscribeEvents('tenant:*', async (channel, eventType, payload, envelope) => {
-    if (eventType !== 'message.received') return;
+    if (eventType !== 'message.routed') return;
 
-    const parsed = MessageReceivedPayload.safeParse(payload);
+    const parsed = MessageRoutedPayload.safeParse(payload);
     if (!parsed.success) {
       log(
-        `${channel} message.received payload inválido: ${parsed.error.message}`,
+        `${channel} message.routed payload inválido: ${parsed.error.message}`,
       );
       return;
     }
 
-    // Coordenador só roda em mensagens externas de cliente final. Channel
-    // `simulated_webhook`, `email`, `whatsapp` e `sms` são os abstractos
-    // válidos hoje — todos viáveis.
-    const messageReceived = parsed.data;
-    const tenantId = messageReceived.tenantId;
+    const routed = parsed.data;
+    if (routed.destinationDepartment !== TARGET_DEPARTMENT) {
+      // Mensagem pra outro departamento — outro Coordenador (quando existir)
+      // pega. Aqui é no-op silencioso.
+      return;
+    }
+
+    const tenantId = routed.tenantId;
     const traceId = envelope.traceId;
 
     // Verifica se o tenant tem o Coordenador seedado. Se não, ignora —
@@ -69,14 +79,14 @@ export const startCoordinatorSubscriber = (
     }
 
     const payloadJson = {
-      conversationId: messageReceived.conversationId,
-      messageId: messageReceived.messageId,
+      conversationId: routed.conversationId,
+      messageId: routed.messageId,
     };
 
     try {
       const task = await createTask(supabase, {
         tenantId,
-        accountId: messageReceived.accountId,
+        accountId: routed.accountId,
         traceId,
         taskType: 'atendimento.classify',
         priority: 5,
@@ -86,23 +96,24 @@ export const startCoordinatorSubscriber = (
 
       await recordTaskLifecycle(supabase, {
         tenantId,
-        accountId: messageReceived.accountId,
+        accountId: routed.accountId,
         taskId: task.id,
         traceId,
-        actor: `system:message_received`,
+        actor: 'system:message_routed',
         action: 'task.created',
         metadata: {
           taskType: 'atendimento.classify',
           agentKey: COORDINATOR_AGENT_KEY,
-          messageId: messageReceived.messageId,
+          messageId: routed.messageId,
+          destinationDepartment: routed.destinationDepartment,
         },
       });
       await recordTaskLifecycle(supabase, {
         tenantId,
-        accountId: messageReceived.accountId,
+        accountId: routed.accountId,
         taskId: task.id,
         traceId,
-        actor: `system:message_received`,
+        actor: 'system:message_routed',
         action: 'task.assigned',
         metadata: { agentId: agent.id, agentKey: COORDINATOR_AGENT_KEY },
       });
@@ -116,17 +127,17 @@ export const startCoordinatorSubscriber = (
         },
         {
           // Dedup por mensagem. Reentregas viram no-op.
-          jobId: `coord-${messageReceived.messageId}`,
+          jobId: `coord-${routed.messageId}`,
         },
       );
 
       log(
-        `enfileirado coordenador task=${task.id} message=${messageReceived.messageId} trace=${traceId}`,
+        `enfileirado coordenador task=${task.id} message=${routed.messageId} trace=${traceId}`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log(
-        `falha ao enfileirar coordenador pra message=${messageReceived.messageId}: ${message}`,
+        `falha ao enfileirar coordenador pra message=${routed.messageId}: ${message}`,
       );
     }
   });

@@ -20,6 +20,7 @@ import { makeAgentTaskHandler } from './workers/agent-tasks.js';
 import { startCoordinatorSubscriber } from './workers/atendimento-coordenador.js';
 import { startEspecialistaComercialSubscriber } from './workers/atendimento-especialista-comercial.js';
 import { startEspecialistaOperacionalSubscriber } from './workers/atendimento-especialista-operacional.js';
+import { startRouterInboundSubscriber } from './workers/router-inbound.js';
 
 const app = new Hono();
 
@@ -103,27 +104,37 @@ const subscription = subscribeEvents('tenant:*', async (channel, eventType, payl
   io.to(channel).emit(eventType, payload);
 });
 
-// Coordenador subscriber — consome message.received e enfileira agent-tasks
-// pra cada mensagem nova. Usa service role pra contornar RLS (subscriber não
-// tem JWT de user). Idempotência via BullMQ jobId = `coord-<messageId>`.
-const coordinatorSupabase = createServiceRoleClient({
+// Service role compartilhado por todos os subscribers do agent-runtime —
+// subscribers não têm JWT de user, então precisam bypassar RLS. Toda
+// validação de tenant é manual no handler.
+const subscriberSupabase = createServiceRoleClient({
   url: agentRuntimeEnv.SUPABASE_URL,
   serviceRoleKey: agentRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY,
 });
-const coordinatorSubscription = startCoordinatorSubscriber(coordinatorSupabase);
+
+// Router-inbound subscriber — consome `message.received` e enfileira o
+// Roteador (Fase 2-prep, supersedes ADR-019). Roteador classifica e o graph
+// publica `message.routed` que o Coordenador (e futuros Coordenadores de
+// outros departamentos) escuta filtrando por destinationDepartment.
+const routerInboundSubscription = startRouterInboundSubscriber(subscriberSupabase);
+
+// Coordenador subscriber — consome `message.routed` filtrado por
+// destinationDepartment='atendimento' e enfileira a classificação fina de
+// intent. Idempotência via BullMQ jobId = `coord-<messageId>`.
+const coordinatorSubscription = startCoordinatorSubscriber(subscriberSupabase);
 
 // Especialista Operacional subscriber — consome agent.handoff_requested
 // quando toAgentKey === 'atendimento.especialista_operacional'. Reusa o
 // cliente service role (single connection pra todos workers do agent-runtime).
 const especialistaOperacionalSubscription =
-  startEspecialistaOperacionalSubscriber(coordinatorSupabase);
+  startEspecialistaOperacionalSubscriber(subscriberSupabase);
 
 // Especialista Comercial subscriber — consome agent.handoff_requested
 // quando toAgentKey === 'atendimento.especialista_comercial' (publicado pelo
 // Coordenador pra intents comercial.lead_*). Idempotência via jobId =
 // `escom-<messageId>`. Reusa o mesmo client service role.
 const especialistaComercialSubscription =
-  startEspecialistaComercialSubscriber(coordinatorSupabase);
+  startEspecialistaComercialSubscriber(subscriberSupabase);
 
 const port = PORTS.agentRuntime;
 httpServer.listen(port, () => {
@@ -137,8 +148,9 @@ const shutdown = async (signal: string): Promise<void> => {
   shuttingDown = true;
   console.log(`[agent-runtime] received ${signal}, shutting down`);
   await especialistaOperacionalSubscription.stop().catch(() => undefined);
-  await coordinatorSubscription.stop().catch(() => undefined);
   await especialistaComercialSubscription.stop().catch(() => undefined);
+  await coordinatorSubscription.stop().catch(() => undefined);
+  await routerInboundSubscription.stop().catch(() => undefined);
   await subscription.stop().catch(() => undefined);
   await worker.close().catch(() => undefined);
   await closeAgentTasksQueue().catch(() => undefined);

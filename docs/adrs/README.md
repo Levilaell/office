@@ -22,7 +22,10 @@ Decisões arquiteturais da Plataforma Contábil em ordem cronológica. Formato: 
 - [ADR-016](016-coordenador-atendimento-roteamento.md) — Coordenador de Atendimento como camada de roteamento de departamento
 - [ADR-017](017-modo-shadow-tiers-autonomia.md) — Modo shadow e tiers de autonomia em conversa síncrona
 - [ADR-018](018-shared-domain-depends-on-shared-events.md) — `shared-domain` pode depender de `shared-events`
-- [ADR-019](019-coordenador-bypassa-roteador-fase-1.md) — Coordenador de Atendimento subscreve `message.received` direto na Fase 1
+
+## Superseded
+
+- [ADR-019](019-coordenador-bypassa-roteador-fase-1.md) — Coordenador de Atendimento subscreve `message.received` direto na Fase 1 (superseded no Sprint Fase 2-prep — Roteador entrou no caminho conforme critério de reabertura previsto pelo próprio ADR)
 
 ## Convenção
 

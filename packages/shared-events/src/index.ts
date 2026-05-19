@@ -18,6 +18,7 @@ export {
   ApprovalCreatedPayload,
   ApprovalResolvedPayload,
   MessageReceivedPayload,
+  MessageRoutedPayload,
   ChannelSessionStatusChangedPayload,
   AgentHandoffRequestedPayload,
   ConversationIntentChangedPayload,

@@ -1,7 +1,17 @@
 # ADR-019: Coordenador de Atendimento subscreve `message.received` direto na Fase 1
 
 Data: 2026-05-19
-Status: aceito
+Status: superseded em 2026-05-19 pelo Sprint Fase 2-prep
+
+> **Superseded:** o critério de reabertura descrito abaixo foi acionado no
+> Sprint Fase 2-prep — preparação para o Departamento Societário (Fase 2).
+> O Roteador entrou no caminho de mensagens inbound seguindo o padrão de
+> refactor descrito em "Restrições de implementação". O Coordenador de
+> Atendimento passou a subscrever `message.routed` filtrado por
+> `destinationDepartment === 'atendimento'`. Não foi criado ADR-020 separado:
+> a transição segue exatamente o plano deste ADR, não há decisão nova
+> independente a registrar. Veja `docs/sprint-reviews/fase-2-prep.md` para
+> detalhes da implementação.
 
 ## Contexto
 
