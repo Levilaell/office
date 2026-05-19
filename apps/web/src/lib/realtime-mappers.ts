@@ -2,9 +2,11 @@ import type {
   Agent,
   Approval,
   ChannelSessionRow,
+  ConversationClassificationRow,
   ConversationRow,
   LeadRow,
   MessageDraftRow,
+  MessageRow,
   Task,
 } from '@office/shared-domain';
 import {
@@ -17,6 +19,8 @@ import {
   isConversationChannel,
   isConversationStatus,
   isDepartment,
+  isMessageDirection,
+  isSenderType,
   isTaskStatus,
 } from '@office/shared-types';
 import type {
@@ -24,11 +28,13 @@ import type {
   AgentTier,
   ApprovalSnapshot,
   ChannelSessionSnapshot,
+  ConversationClassificationSnapshot,
   ConversationSnapshot,
   DraftSnapshot,
   DraftStatus,
   LeadSnapshot,
   LeadStatus,
+  MessageSnapshot,
   TaskSnapshot,
 } from './realtime-types';
 
@@ -242,6 +248,56 @@ export const toDraftSnapshot = (row: MessageDraftRow): DraftSnapshot => {
     createdAt: row.created_at,
     editDiff: toRecordOrNull(row.edit_diff),
     decisionMetadata: toRecordOrNull(row.decision_metadata),
+  };
+};
+
+// Sprint 1.6 — message + classification snapshots para a página de
+// detalhe de conversa. NÃO indexamos messages no realtime store global
+// (hook local refetcha).
+export const toMessageSnapshot = (row: MessageRow): MessageSnapshot => {
+  if (!isMessageDirection(row.direction)) {
+    throw new Error(`invalid direction in message ${row.id}: ${row.direction}`);
+  }
+  if (!isSenderType(row.sender_type)) {
+    throw new Error(`invalid sender_type in message ${row.id}: ${row.sender_type}`);
+  }
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    direction: row.direction,
+    senderType: row.sender_type,
+    senderId: row.sender_id,
+    content: row.content,
+    metadata: toRecord(row.metadata),
+    createdAt: row.created_at,
+  };
+};
+
+const CLASSIFICATION_DECISIONS: ReadonlyArray<
+  ConversationClassificationSnapshot['decision']
+> = ['respond_direct', 'handoff_specialist', 'escalate_human', 'ignore'];
+
+const isClassificationDecision = (
+  value: unknown,
+): value is ConversationClassificationSnapshot['decision'] =>
+  typeof value === 'string' &&
+  (CLASSIFICATION_DECISIONS as readonly string[]).includes(value);
+
+export const toConversationClassificationSnapshot = (
+  row: ConversationClassificationRow,
+): ConversationClassificationSnapshot => {
+  if (!isClassificationDecision(row.decision)) {
+    throw new Error(
+      `invalid decision in classification ${row.id}: ${row.decision}`,
+    );
+  }
+  return {
+    id: row.id,
+    intent: row.intent,
+    decision: row.decision,
+    confidence: row.confidence === null ? null : Number(row.confidence),
+    reasoning: row.reasoning,
+    createdAt: row.created_at,
   };
 };
 

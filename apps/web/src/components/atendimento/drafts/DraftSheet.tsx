@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -179,6 +180,12 @@ export function DraftSheet({
                       {conversation.channel} · {conversation.unreadCount} não
                       lidas
                     </div>
+                    <Link
+                      href={`/dashboard/atendimento/conversas/${conversation.id}`}
+                      className="text-xs text-primary underline-offset-2 hover:underline"
+                    >
+                      Ver histórico completo →
+                    </Link>
                   </section>
                 )}
 

@@ -8,6 +8,8 @@ import type {
   ConversationChannel,
   ConversationStatus,
   Department,
+  MessageDirection,
+  SenderType,
   TaskStatus,
 } from '@office/shared-types';
 
@@ -186,3 +188,34 @@ export type AgentMetricsSnapshot = {
 };
 
 export type AgentMetricsWindow = '24h' | '7d' | '30d';
+
+// Sprint 1.6 — message snapshot pra timeline da página de detalhe de
+// conversa. NÃO está no realtime store global (escopo restrito à página
+// de detalhe; hook local refetcha em `message.received` filtered).
+export type MessageSnapshot = {
+  id: string;
+  conversationId: string;
+  direction: MessageDirection;
+  senderType: SenderType;
+  senderId: string | null;
+  content: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type ConversationClassificationSnapshot = {
+  id: string;
+  intent: string;
+  decision: 'respond_direct' | 'handoff_specialist' | 'escalate_human' | 'ignore';
+  confidence: number | null;
+  reasoning: string | null;
+  createdAt: string;
+};
+
+export type ConversationDetailSnapshot = {
+  conversation: ConversationSnapshot;
+  messages: MessageSnapshot[];
+  classifications: ConversationClassificationSnapshot[];
+  lead: LeadSnapshot | null;
+  drafts: DraftSnapshot[];
+};
